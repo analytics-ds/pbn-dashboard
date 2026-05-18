@@ -1,0 +1,17 @@
+{
+  "name": "pbn-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Dashboard PBN: GSC + articles publies, vision 1 clin d'oeil",
+  "scripts": {
+    "build": "node src/build.js",
+    "get-refresh-token": "node scripts/get-refresh-token.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  }
+}
