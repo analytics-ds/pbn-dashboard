@@ -276,6 +276,10 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
             <button class="active" data-period="28">28j</button>
             <button data-period="90">90j</button>
           </div>
+          <div class="switch" id="delta-switch" title="Affichage des deltas">
+            <button class="active" data-delta="pct">Δ %</button>
+            <button data-delta="abs">Δ #</button>
+          </div>
         </div>
       </div>
       <div class="content" id="content"></div>
@@ -290,6 +294,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     let currentPeriod = '28';
     let currentDevice = 'all';
     let currentCountry = 'all';
+    let currentDeltaMode = 'pct';
     let currentView = 'overview';
     let charts = [];
 
@@ -376,10 +381,21 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
     function deltaPct(curr, prev) {
-      if (!prev || prev === 0) return curr > 0 ? { label: 'new', sign: 'up', raw: 100 } : null;
+      const diff = Math.round((curr || 0) - (prev || 0));
+      if (!prev || prev === 0) {
+        if (curr > 0) {
+          const lbl = currentDeltaMode === 'abs' ? '+' + fmtNum(diff) : 'new';
+          return { label: lbl, sign: 'up', raw: 100 };
+        }
+        return null;
+      }
       const pct = ((curr - prev) / prev) * 100;
-      if (Math.abs(pct) < 0.5) return { label: '0%', sign: 'flat', raw: 0 };
-      return { label: (pct > 0 ? '+' : '') + pct.toFixed(0) + '%', sign: pct > 0 ? 'up' : 'down', raw: pct };
+      if (Math.abs(pct) < 0.5 && Math.abs(diff) < 1) return { label: currentDeltaMode === 'abs' ? '0' : '0%', sign: 'flat', raw: 0 };
+      const sign = pct > 0 ? 'up' : 'down';
+      if (currentDeltaMode === 'abs') {
+        return { label: (diff > 0 ? '+' : '') + fmtNum(diff), sign, raw: pct };
+      }
+      return { label: (pct > 0 ? '+' : '') + pct.toFixed(0) + '%', sign, raw: pct };
     }
     function deltaPos(curr, prev) {
       if (!prev || !isFinite(prev) || !curr || !isFinite(curr)) return null;
@@ -950,6 +966,11 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
     [...document.querySelectorAll('#period-switch button')].forEach(b => b.addEventListener('click', () => setPeriod(b.dataset.period)));
     [...document.querySelectorAll('#device-switch button')].forEach(b => b.addEventListener('click', () => setDevice(b.dataset.device)));
+    [...document.querySelectorAll('#delta-switch button')].forEach(b => b.addEventListener('click', () => {
+      currentDeltaMode = b.dataset.delta;
+      [...document.querySelectorAll('#delta-switch button')].forEach(x => x.classList.toggle('active', x.dataset.delta === currentDeltaMode));
+      destroyCharts(); refreshCurrentView();
+    }));
     document.getElementById('country-select').addEventListener('change', (e) => { currentCountry = e.target.value; destroyCharts(); refreshCurrentView(); });
 
     populateCountrySelect();
