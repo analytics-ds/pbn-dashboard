@@ -12,7 +12,7 @@ export const SITES = [
   },
   {
     domain: 'comparatif-mode.fr',
-    gscProperty: 'sc-domain:comparatif-mode.fr',
+    gscProperty: 'sc-domain:comparatif-mode.com',
     repo: 'analytics-ds/comparatif-mode',
     articlesPath: 'content/fr/blog',
   },
@@ -30,7 +30,7 @@ export const SITES = [
   },
   {
     domain: 'meilleur-classement.com',
-    gscProperty: 'sc-domain:meilleur-classement.com',
+    gscProperty: 'https://meilleur-classement.com/',
     repo: 'analytics-ds/meilleur-classement',
     articlesPath: 'src/content/blog',
   },
