@@ -59,11 +59,14 @@ function rowsToPages(rows) {
 
 async function fetchWindow(searchconsole, gscProperty, days) {
   const { current, previous } = rangesForWindow(days);
-  const [currTotalsRaw, prevTotalsRaw, currPagesRaw, prevPagesRaw] = await Promise.all([
+  const [currTotalsRaw, prevTotalsRaw, currPagesRaw, prevPagesRaw, currQueriesRaw, prevQueriesRaw, currDeviceRaw] = await Promise.all([
     querySite(searchconsole, gscProperty, { ...current, rowLimit: 1 }),
     querySite(searchconsole, gscProperty, { ...previous, rowLimit: 1 }),
     querySite(searchconsole, gscProperty, { ...current, dimensions: ['page'], rowLimit: 1000 }),
     querySite(searchconsole, gscProperty, { ...previous, dimensions: ['page'], rowLimit: 1000 }),
+    querySite(searchconsole, gscProperty, { ...current, dimensions: ['query'], rowLimit: 500 }),
+    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['query'], rowLimit: 500 }),
+    querySite(searchconsole, gscProperty, { ...current, dimensions: ['device'], rowLimit: 5 }),
   ]);
 
   if (currTotalsRaw.error) {
@@ -90,12 +93,52 @@ async function fetchWindow(searchconsole, gscProperty, days) {
     };
   });
 
+  // Queries
+  const rowsToQueries = (rows) => {
+    if (rows.error) return [];
+    return rows.map(r => ({
+      query: r.keys?.[0] ?? '',
+      clicks: r.clicks ?? 0,
+      impressions: r.impressions ?? 0,
+      position: r.position ?? 0,
+      ctr: r.ctr ?? 0,
+    }));
+  };
+  const currQueries = rowsToQueries(currQueriesRaw);
+  const prevByQuery = new Map(rowsToQueries(prevQueriesRaw).map(q => [q.query, q]));
+  const queries = currQueries.map(q => {
+    const prev = prevByQuery.get(q.query);
+    return {
+      ...q,
+      prevClicks: prev?.clicks ?? 0,
+      prevImpressions: prev?.impressions ?? 0,
+      prevPosition: prev?.position ?? null,
+    };
+  });
+
+  // Device breakdown
+  const devices = {};
+  if (!currDeviceRaw.error) {
+    for (const r of currDeviceRaw) {
+      const dev = (r.keys?.[0] ?? '').toLowerCase();
+      if (!dev) continue;
+      devices[dev] = {
+        clicks: r.clicks ?? 0,
+        impressions: r.impressions ?? 0,
+        position: r.position ?? 0,
+        ctr: r.ctr ?? 0,
+      };
+    }
+  }
+
   return {
     period: current,
     previousPeriod: previous,
     current: currTotals,
     previous: prevTotals,
     pages,
+    queries,
+    devices,
   };
 }
 
