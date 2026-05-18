@@ -11,7 +11,7 @@ export const SITES = [
     articlesPath: 'content/blog',
   },
   {
-    domain: 'comparatif-mode.fr',
+    domain: 'comparatif-mode.com',
     gscProperty: 'sc-domain:comparatif-mode.com',
     repo: 'analytics-ds/comparatif-mode',
     articlesPath: 'content/fr/blog',
