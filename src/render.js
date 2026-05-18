@@ -165,16 +165,26 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     @media (max-width: 1100px) { .chart-grid { grid-template-columns: 1fr; } }
 
     .top-pages { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
-    .top-pages .head { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-    .top-pages .head h3 { margin: 0; font-size: 14px; font-weight: 600; }
-    .top-pages .head .hint { font-size: 11px; color: var(--text-muted); }
-    .page-row { display: grid; grid-template-columns: 28px 1fr 60px 70px; gap: 12px; padding: 11px 20px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.1s; }
+    .top-pages .head { padding: 14px 20px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .top-pages .head h3 { margin: 0; font-size: 14px; font-weight: 600; flex: 0 0 auto; }
+    .top-pages .head .count { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+    .top-pages .head .search { margin-left: auto; position: relative; }
+    .top-pages .head .search input { width: 220px; padding: 7px 12px 7px 32px; font-size: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); outline: none; font-family: inherit; }
+    .top-pages .head .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(194,182,66,0.15); background: var(--bg-card); }
+    .top-pages .head .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; }
+    .top-pages .head .sort-btn { padding: 6px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 500; color: var(--text-secondary); background: var(--bg); border: 1px solid var(--border); cursor: pointer; }
+    .top-pages .head .sort-btn:hover { background: var(--bg-warm); }
+    .pages-list { max-height: 640px; overflow-y: auto; }
+    .pages-cols { display: grid; grid-template-columns: 40px 1fr 80px 90px 80px 80px; gap: 12px; padding: 9px 20px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+    .pages-cols .right { text-align: right; }
+    .page-row { display: grid; grid-template-columns: 40px 1fr 80px 90px 80px 80px; gap: 12px; padding: 11px 20px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.1s; }
     .page-row:last-child { border-bottom: 0; }
     .page-row:hover { background: var(--bg-warm); }
     .page-row .rank { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
     .page-row .url { color: var(--text-secondary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .page-row:hover .url { color: var(--text); }
-    .page-row .clicks { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+    .page-row .num { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; color: var(--text); }
+    .page-row .num-light { font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; color: var(--text-secondary); }
     .page-row .delta-cell { text-align: right; }
 
     .empty-state { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
@@ -450,25 +460,63 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
         '</div>' +
         '<div class="chart-card" style="margin-top:20px"><h3>Position moyenne</h3><div class="chart-sub">Inversee: plus bas = mieux (' + currentPeriod + ' jours)</div><div class="chart-wrap"><canvas id="chart-position"></canvas></div></div>';
 
-      const topPages = (w.topPages || []).map((p, i) => {
-        const d = deltaPct(p.clicks, p.prevClicks);
-        const path = p.url.replace('https://' + site.domain, '').replace('https://www.' + site.domain, '') || '/';
-        return '<div class="page-row">' +
-          '<div class="rank">' + (i + 1) + '</div>' +
-          '<a class="url" href="' + p.url + '" target="_blank" rel="noopener" title="' + p.url + '">' + path + '</a>' +
-          '<div class="clicks">' + fmtNum(p.clicks) + '</div>' +
-          '<div class="delta-cell">' + badge(d) + '</div>' +
-        '</div>';
-      }).join('');
-
+      const pages = w.pages || [];
       const topSection = '<div class="top-pages" style="margin-top:20px">' +
-        '<div class="head"><h3>Top pages</h3><span class="hint">Clics &middot; variation vs periode precedente</span></div>' +
-        (topPages || '<div class="empty-state">Aucune page avec des donnees</div>') +
+        '<div class="head">' +
+          '<h3>Pages</h3>' +
+          '<span class="count" id="pages-count">' + pages.length + ' au total</span>' +
+          '<div class="search">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>' +
+            '<input type="search" id="pages-search" placeholder="Rechercher une URL...">' +
+          '</div>' +
+        '</div>' +
+        '<div class="pages-cols">' +
+          '<div>#</div>' +
+          '<div>URL</div>' +
+          '<div class="right">Clics</div>' +
+          '<div class="right">Impr.</div>' +
+          '<div class="right">Pos.</div>' +
+          '<div class="right">Delta</div>' +
+        '</div>' +
+        '<div class="pages-list" id="pages-list">' +
+          (pages.length ? renderPagesList(pages, site.domain, '') : '<div class="empty-state">Aucune page avec des donnees</div>') +
+        '</div>' +
       '</div>';
 
       $('#content').innerHTML = head + kpis + charts + topSection;
+
+      // Search filter
+      const searchEl = document.getElementById('pages-search');
+      if (searchEl) {
+        let t;
+        searchEl.addEventListener('input', (e) => {
+          clearTimeout(t);
+          const q = e.target.value.toLowerCase();
+          t = setTimeout(() => {
+            const filtered = q ? pages.filter(p => p.url.toLowerCase().includes(q)) : pages;
+            document.getElementById('pages-list').innerHTML = filtered.length ? renderPagesList(filtered, site.domain, q) : '<div class="empty-state">Aucun resultat</div>';
+            document.getElementById('pages-count').textContent = q ? (filtered.length + ' / ' + pages.length) : (pages.length + ' au total');
+          }, 80);
+        });
+      }
+
       // Now render charts
       requestAnimationFrame(() => renderCharts(site));
+    }
+
+    function renderPagesList(pages, domain, query) {
+      return pages.map((p, i) => {
+        const d = deltaPct(p.clicks, p.prevClicks);
+        const path = p.url.replace('https://' + domain, '').replace('https://www.' + domain, '') || '/';
+        return '<div class="page-row">' +
+          '<div class="rank">' + (i + 1) + '</div>' +
+          '<a class="url" href="' + p.url + '" target="_blank" rel="noopener" title="' + p.url + '">' + path + '</a>' +
+          '<div class="num">' + fmtNum(p.clicks) + '</div>' +
+          '<div class="num-light">' + fmtNum(p.impressions) + '</div>' +
+          '<div class="num-light">' + fmtPos(p.position) + '</div>' +
+          '<div class="delta-cell">' + badge(d) + '</div>' +
+        '</div>';
+      }).join('');
     }
 
     function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }

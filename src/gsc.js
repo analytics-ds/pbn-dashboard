@@ -62,8 +62,8 @@ async function fetchWindow(searchconsole, gscProperty, days) {
   const [currTotalsRaw, prevTotalsRaw, currPagesRaw, prevPagesRaw] = await Promise.all([
     querySite(searchconsole, gscProperty, { ...current, rowLimit: 1 }),
     querySite(searchconsole, gscProperty, { ...previous, rowLimit: 1 }),
-    querySite(searchconsole, gscProperty, { ...current, dimensions: ['page'], rowLimit: 50 }),
-    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['page'], rowLimit: 100 }),
+    querySite(searchconsole, gscProperty, { ...current, dimensions: ['page'], rowLimit: 1000 }),
+    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['page'], rowLimit: 1000 }),
   ]);
 
   if (currTotalsRaw.error) {
@@ -75,7 +75,7 @@ async function fetchWindow(searchconsole, gscProperty, days) {
   const currPages = rowsToPages(currPagesRaw);
   const prevByUrl = new Map(rowsToPages(prevPagesRaw).map(p => [p.url, p]));
 
-  const topPages = currPages.slice(0, 10).map(p => ({
+  const pages = currPages.map(p => ({
     url: p.url,
     clicks: p.clicks,
     impressions: p.impressions,
@@ -88,7 +88,7 @@ async function fetchWindow(searchconsole, gscProperty, days) {
     previousPeriod: previous,
     current: currTotals,
     previous: prevTotals,
-    topPages,
+    pages,
   };
 }
 
