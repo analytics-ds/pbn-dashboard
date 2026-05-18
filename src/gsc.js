@@ -62,10 +62,10 @@ async function fetchWindow(searchconsole, gscProperty, days) {
   const [currTotalsRaw, prevTotalsRaw, currPagesRaw, prevPagesRaw, currQueriesRaw, prevQueriesRaw, currDeviceRaw, currCountryRaw] = await Promise.all([
     querySite(searchconsole, gscProperty, { ...current, rowLimit: 1 }),
     querySite(searchconsole, gscProperty, { ...previous, rowLimit: 1 }),
-    querySite(searchconsole, gscProperty, { ...current, dimensions: ['page'], rowLimit: 1000 }),
-    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['page'], rowLimit: 1000 }),
-    querySite(searchconsole, gscProperty, { ...current, dimensions: ['query'], rowLimit: 500 }),
-    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['query'], rowLimit: 500 }),
+    querySite(searchconsole, gscProperty, { ...current, dimensions: ['page', 'country'], rowLimit: 2000 }),
+    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['page', 'country'], rowLimit: 2000 }),
+    querySite(searchconsole, gscProperty, { ...current, dimensions: ['query', 'country'], rowLimit: 2000 }),
+    querySite(searchconsole, gscProperty, { ...previous, dimensions: ['query', 'country'], rowLimit: 2000 }),
     querySite(searchconsole, gscProperty, { ...current, dimensions: ['device'], rowLimit: 5 }),
     querySite(searchconsole, gscProperty, { ...current, dimensions: ['country'], rowLimit: 50 }),
   ]);
@@ -78,43 +78,44 @@ async function fetchWindow(searchconsole, gscProperty, days) {
   const prevTotals = rowsToTotals(prevTotalsRaw);
   // Filtre URLs avec hashtag ou parametres
   const isCleanUrl = (u) => !u.includes('#') && !u.includes('?');
-  const currPages = rowsToPages(currPagesRaw).filter(p => isCleanUrl(p.url));
-  const prevByUrl = new Map(rowsToPages(prevPagesRaw).filter(p => isCleanUrl(p.url)).map(p => [p.url, p]));
 
-  const pages = currPages.map(p => {
-    const prev = prevByUrl.get(p.url);
-    return {
-      url: p.url,
-      clicks: p.clicks,
-      impressions: p.impressions,
-      position: p.position,
-      prevClicks: prev?.clicks ?? 0,
-      prevImpressions: prev?.impressions ?? 0,
-      prevPosition: prev?.position ?? null,
-    };
+  // Pages avec dimension country: une row par (page, country)
+  const rowsToPageCountry = (rows) => {
+    if (rows.error) return [];
+    return rows.map(r => ({
+      url: r.keys?.[0] ?? '',
+      country: (r.keys?.[1] ?? '').toLowerCase(),
+      clicks: r.clicks ?? 0,
+      impressions: r.impressions ?? 0,
+      position: r.position ?? 0,
+    }));
+  };
+  const currPagesCC = rowsToPageCountry(currPagesRaw).filter(p => isCleanUrl(p.url));
+  const prevPagesCC = rowsToPageCountry(prevPagesRaw).filter(p => isCleanUrl(p.url));
+  const prevPageMap = new Map(prevPagesCC.map(p => [p.url + '|' + p.country, p]));
+  const pagesByCountry = currPagesCC.map(p => {
+    const prev = prevPageMap.get(p.url + '|' + p.country);
+    return { ...p, prevClicks: prev?.clicks ?? 0, prevImpressions: prev?.impressions ?? 0, prevPosition: prev?.position ?? null };
   });
 
-  // Queries
-  const rowsToQueries = (rows) => {
+  // Queries avec dimension country
+  const rowsToQueryCountry = (rows) => {
     if (rows.error) return [];
     return rows.map(r => ({
       query: r.keys?.[0] ?? '',
+      country: (r.keys?.[1] ?? '').toLowerCase(),
       clicks: r.clicks ?? 0,
       impressions: r.impressions ?? 0,
       position: r.position ?? 0,
       ctr: r.ctr ?? 0,
     }));
   };
-  const currQueries = rowsToQueries(currQueriesRaw);
-  const prevByQuery = new Map(rowsToQueries(prevQueriesRaw).map(q => [q.query, q]));
-  const queries = currQueries.map(q => {
-    const prev = prevByQuery.get(q.query);
-    return {
-      ...q,
-      prevClicks: prev?.clicks ?? 0,
-      prevImpressions: prev?.impressions ?? 0,
-      prevPosition: prev?.position ?? null,
-    };
+  const currQueriesCC = rowsToQueryCountry(currQueriesRaw);
+  const prevQueriesCC = rowsToQueryCountry(prevQueriesRaw);
+  const prevQueryMap = new Map(prevQueriesCC.map(q => [q.query + '|' + q.country, q]));
+  const queriesByCountry = currQueriesCC.map(q => {
+    const prev = prevQueryMap.get(q.query + '|' + q.country);
+    return { ...q, prevClicks: prev?.clicks ?? 0, prevImpressions: prev?.impressions ?? 0, prevPosition: prev?.position ?? null };
   });
 
   // Device breakdown
@@ -152,8 +153,8 @@ async function fetchWindow(searchconsole, gscProperty, days) {
     previousPeriod: previous,
     current: currTotals,
     previous: prevTotals,
-    pages,
-    queries,
+    pagesByCountry,
+    queriesByCountry,
     devices,
     countries,
   };

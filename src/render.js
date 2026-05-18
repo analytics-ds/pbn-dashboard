@@ -293,9 +293,75 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     let currentView = 'overview';
     let charts = [];
 
-    // ISO 3166-1 alpha-3 -> nom francais (codes les plus courants)
-    const COUNTRY_NAMES = { fra: 'France', usa: 'États-Unis', gbr: 'Royaume-Uni', deu: 'Allemagne', esp: 'Espagne', ita: 'Italie', bel: 'Belgique', che: 'Suisse', can: 'Canada', mar: 'Maroc', dza: 'Algérie', tun: 'Tunisie', sen: 'Sénégal', civ: 'Côte d\\'Ivoire', cmr: 'Cameroun', lux: 'Luxembourg', prt: 'Portugal', nld: 'Pays-Bas', aut: 'Autriche', irl: 'Irlande', pol: 'Pologne', rou: 'Roumanie', tur: 'Turquie', rus: 'Russie', chn: 'Chine', jpn: 'Japon', kor: 'Corée du Sud', ind: 'Inde', bra: 'Brésil', mex: 'Mexique', arg: 'Argentine', aus: 'Australie', mco: 'Monaco', mlt: 'Malte', dnk: 'Danemark', swe: 'Suède', nor: 'Norvège', fin: 'Finlande', isl: 'Islande', cze: 'Tchéquie', hun: 'Hongrie', svk: 'Slovaquie', svn: 'Slovénie', hrv: 'Croatie', grc: 'Grèce', bgr: 'Bulgarie', srb: 'Serbie', ukr: 'Ukraine', isr: 'Israël', are: 'Émirats arabes unis', sau: 'Arabie saoudite', mdg: 'Madagascar', mus: 'Maurice', reu: 'La Réunion', glp: 'Guadeloupe', mtq: 'Martinique', guf: 'Guyane', nca: 'Nouvelle-Calédonie', pyf: 'Polynésie française' };
-    function countryName(code) { return COUNTRY_NAMES[code] || code.toUpperCase(); }
+    // ISO 3166-1 alpha-3 -> alpha-2 + nom francais
+    const COUNTRY_INFO = { fra: ['fr', 'France'], usa: ['us', 'États-Unis'], gbr: ['gb', 'Royaume-Uni'], deu: ['de', 'Allemagne'], esp: ['es', 'Espagne'], ita: ['it', 'Italie'], bel: ['be', 'Belgique'], che: ['ch', 'Suisse'], can: ['ca', 'Canada'], mar: ['ma', 'Maroc'], dza: ['dz', 'Algérie'], tun: ['tn', 'Tunisie'], sen: ['sn', 'Sénégal'], civ: ['ci', 'Côte d\\'Ivoire'], cmr: ['cm', 'Cameroun'], lux: ['lu', 'Luxembourg'], prt: ['pt', 'Portugal'], nld: ['nl', 'Pays-Bas'], aut: ['at', 'Autriche'], irl: ['ie', 'Irlande'], pol: ['pl', 'Pologne'], rou: ['ro', 'Roumanie'], tur: ['tr', 'Turquie'], rus: ['ru', 'Russie'], chn: ['cn', 'Chine'], jpn: ['jp', 'Japon'], kor: ['kr', 'Corée du Sud'], ind: ['in', 'Inde'], bra: ['br', 'Brésil'], mex: ['mx', 'Mexique'], arg: ['ar', 'Argentine'], aus: ['au', 'Australie'], mco: ['mc', 'Monaco'], mlt: ['mt', 'Malte'], dnk: ['dk', 'Danemark'], swe: ['se', 'Suède'], nor: ['no', 'Norvège'], fin: ['fi', 'Finlande'], isl: ['is', 'Islande'], cze: ['cz', 'Tchéquie'], hun: ['hu', 'Hongrie'], svk: ['sk', 'Slovaquie'], svn: ['si', 'Slovénie'], hrv: ['hr', 'Croatie'], grc: ['gr', 'Grèce'], bgr: ['bg', 'Bulgarie'], srb: ['rs', 'Serbie'], ukr: ['ua', 'Ukraine'], isr: ['il', 'Israël'], are: ['ae', 'Émirats arabes unis'], sau: ['sa', 'Arabie saoudite'], mdg: ['mg', 'Madagascar'], mus: ['mu', 'Maurice'], reu: ['re', 'La Réunion'], glp: ['gp', 'Guadeloupe'], mtq: ['mq', 'Martinique'], guf: ['gf', 'Guyane'], nca: ['nc', 'Nouvelle-Calédonie'], pyf: ['pf', 'Polynésie française'] };
+    function countryName(code) { return COUNTRY_INFO[code]?.[1] || code.toUpperCase(); }
+    function countryFlag(code) {
+      const a2 = COUNTRY_INFO[code]?.[0];
+      if (!a2) return '🌐';
+      return String.fromCodePoint(...a2.toUpperCase().split('').map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+    }
+
+    // ----- Page/Query aggregation by country
+    function getPagesForView(w) {
+      if (!w?.pagesByCountry) return [];
+      if (currentCountry === 'all') {
+        const map = new Map();
+        for (const p of w.pagesByCountry) {
+          const e = map.get(p.url);
+          if (e) {
+            e._wPos += (p.position || 0) * (p.impressions || 0);
+            e._wPosPrev += (p.prevPosition || 0) * (p.prevImpressions || 0);
+            e.clicks += p.clicks; e.impressions += p.impressions;
+            e.prevClicks += p.prevClicks; e.prevImpressions += p.prevImpressions;
+          } else {
+            map.set(p.url, {
+              url: p.url, clicks: p.clicks, impressions: p.impressions, position: p.position,
+              prevClicks: p.prevClicks, prevImpressions: p.prevImpressions, prevPosition: p.prevPosition,
+              _wPos: (p.position || 0) * (p.impressions || 0),
+              _wPosPrev: (p.prevPosition || 0) * (p.prevImpressions || 0),
+            });
+          }
+        }
+        const out = [...map.values()].map(p => ({
+          ...p,
+          position: p.impressions > 0 ? p._wPos / p.impressions : p.position,
+          prevPosition: p.prevImpressions > 0 ? p._wPosPrev / p.prevImpressions : p.prevPosition,
+        }));
+        return out.sort((a, b) => b.clicks - a.clicks);
+      }
+      return w.pagesByCountry.filter(p => p.country === currentCountry).sort((a, b) => b.clicks - a.clicks);
+    }
+
+    function getQueriesForView(w) {
+      if (!w?.queriesByCountry) return [];
+      if (currentCountry === 'all') {
+        const map = new Map();
+        for (const q of w.queriesByCountry) {
+          const e = map.get(q.query);
+          if (e) {
+            e._wPos += (q.position || 0) * (q.impressions || 0);
+            e._wPosPrev += (q.prevPosition || 0) * (q.prevImpressions || 0);
+            e.clicks += q.clicks; e.impressions += q.impressions;
+            e.prevClicks += q.prevClicks; e.prevImpressions += q.prevImpressions;
+          } else {
+            map.set(q.query, {
+              query: q.query, clicks: q.clicks, impressions: q.impressions, position: q.position, ctr: q.ctr,
+              prevClicks: q.prevClicks, prevImpressions: q.prevImpressions, prevPosition: q.prevPosition,
+              _wPos: (q.position || 0) * (q.impressions || 0),
+              _wPosPrev: (q.prevPosition || 0) * (q.prevImpressions || 0),
+            });
+          }
+        }
+        const out = [...map.values()].map(q => ({
+          ...q,
+          position: q.impressions > 0 ? q._wPos / q.impressions : q.position,
+          prevPosition: q.prevImpressions > 0 ? q._wPosPrev / q.prevImpressions : q.prevPosition,
+        }));
+        return out.sort((a, b) => b.clicks - a.clicks);
+      }
+      return w.queriesByCountry.filter(q => q.country === currentCountry).sort((a, b) => b.clicks - a.clicks);
+    }
 
     const $ = (s, el = document) => el.querySelector(s);
 
@@ -380,7 +446,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
       });
       const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
       const current = sel.value;
-      sel.innerHTML = '<option value="all">Tous pays</option>' + sorted.map(([c, n]) => '<option value="' + c + '">' + countryName(c) + ' (' + n + ')</option>').join('');
+      sel.innerHTML = '<option value="all">🌐 Tous pays</option>' + sorted.map(([c]) => '<option value="' + c + '">' + countryFlag(c) + ' ' + countryName(c) + '</option>').join('');
       if ([...sel.options].some(o => o.value === current)) sel.value = current;
     }
 
@@ -531,8 +597,9 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
       const all = [];
       SITES.forEach(s => {
         const w = getSiteWindow(s, currentPeriod);
-        if (!w || w.error || !w.pages) return;
-        w.pages.forEach(p => {
+        if (!w || w.error) return;
+        const pages = getPagesForView(w);
+        pages.forEach(p => {
           const d = deltaPct(p.clicks, p.prevClicks);
           if (!d) return;
           all.push({ domain: s.domain, url: p.url, path: pathOf(p.url, s.domain), clicks: p.clicks, prevClicks: p.prevClicks, deltaPct: d.raw, deltaSign: d.sign, deltaLabel: d.label });
@@ -726,7 +793,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
     function renderDataTable(site, w) {
       const tab = detailState.tab;
-      const all = tab === 'pages' ? (w.pages || []) : (w.queries || []);
+      const all = tab === 'pages' ? getPagesForView(w) : getQueriesForView(w);
       const filter = detailState.filter;
       const filtered = filter ? all.filter(it => (tab === 'pages' ? it.url : it.query).toLowerCase().includes(filter)) : all;
       const state = detailState[tab];
@@ -832,14 +899,15 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     function exportSite(site, w) {
       const isQueries = detailState.tab === 'queries';
       const rows = [];
+      const suffix = currentCountry === 'all' ? '' : '-' + currentCountry;
       if (isQueries) {
         rows.push(['Mot-cle', 'Clics', 'PrevClics', 'Impressions', 'PrevImpressions', 'Position', 'PrevPosition', 'CTR%']);
-        (w.queries || []).forEach(q => rows.push([q.query, q.clicks, q.prevClicks, q.impressions, q.prevImpressions, q.position?.toFixed(2), q.prevPosition?.toFixed(2), (q.ctr * 100).toFixed(2)]));
-        downloadCSV(site.domain + '-queries-' + currentPeriod + 'j.csv', rows);
+        getQueriesForView(w).forEach(q => rows.push([q.query, q.clicks, q.prevClicks, q.impressions, q.prevImpressions, q.position?.toFixed(2), q.prevPosition?.toFixed(2), (q.ctr * 100).toFixed(2)]));
+        downloadCSV(site.domain + '-queries-' + currentPeriod + 'j' + suffix + '.csv', rows);
       } else {
         rows.push(['URL', 'Clics', 'PrevClics', 'Impressions', 'PrevImpressions', 'Position', 'PrevPosition']);
-        (w.pages || []).forEach(p => rows.push([p.url, p.clicks, p.prevClicks, p.impressions, p.prevImpressions, p.position?.toFixed(2), p.prevPosition?.toFixed(2)]));
-        downloadCSV(site.domain + '-pages-' + currentPeriod + 'j.csv', rows);
+        getPagesForView(w).forEach(p => rows.push([p.url, p.clicks, p.prevClicks, p.impressions, p.prevImpressions, p.position?.toFixed(2), p.prevPosition?.toFixed(2)]));
+        downloadCSV(site.domain + '-pages-' + currentPeriod + 'j' + suffix + '.csv', rows);
       }
     }
     function exportGlobal() {
