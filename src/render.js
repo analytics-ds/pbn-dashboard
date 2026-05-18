@@ -758,7 +758,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
           '<div class="chart-card"><h3>Clics par jour</h3><div class="chart-sub">' + currentPeriod + ' derniers jours</div><div class="chart-wrap"><canvas id="chart-clicks"></canvas></div></div>' +
           '<div class="chart-card"><h3>Impressions par jour</h3><div class="chart-sub">' + currentPeriod + ' derniers jours</div><div class="chart-wrap"><canvas id="chart-impressions"></canvas></div></div>' +
         '</div>' +
-        '<div class="chart-card" style="margin-top:0"><h3>Position moyenne</h3><div class="chart-sub">Inversee: plus bas = mieux (' + currentPeriod + ' jours)</div><div class="chart-wrap"><canvas id="chart-position"></canvas></div></div>';
+        '<div class="chart-card" style="margin-top:0"><h3>Position moyenne</h3><div class="chart-sub">Plus le chiffre est petit, meilleure est la position (' + currentPeriod + ' jours)</div><div class="chart-wrap"><canvas id="chart-position"></canvas></div></div>';
 
       const tableHtml = '<div class="data-table" id="data-table" style="margin-top:20px">' +
           '<div class="head">' +
@@ -892,7 +892,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
       charts.push(new Chart(document.getElementById('chart-clicks'), { type: 'line', data: cD, options: baseOpts }));
       charts.push(new Chart(document.getElementById('chart-impressions'), { type: 'line', data: iD, options: baseOpts }));
-      charts.push(new Chart(document.getElementById('chart-position'), { type: 'line', data: pD, options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, reverse: true, beginAtZero: false, ticks: { ...baseOpts.scales.y.ticks, callback: v => v.toFixed(1) } } } } }));
+      charts.push(new Chart(document.getElementById('chart-position'), { type: 'line', data: pD, options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, beginAtZero: false, ticks: { ...baseOpts.scales.y.ticks, callback: v => v.toFixed(1) } } } } }));
     }
 
     // ----- CSV exports
