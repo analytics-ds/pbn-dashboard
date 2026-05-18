@@ -526,9 +526,10 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
       const exportBtn = '<button class="btn" id="export-global"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Export CSV</button>';
 
-      $('#content').innerHTML = summary + trending +
+      $('#content').innerHTML = summary +
         '<h3 class="section-title">Sites <span class="hint">Cliquer pour voir le detail &middot; ' + exportBtn + '</span></h3>' +
-        '<div class="sites-grid">' + grid + '</div>';
+        '<div class="sites-grid">' + grid + '</div>' +
+        trending;
 
       [...document.querySelectorAll('.site-card')].forEach(el => el.addEventListener('click', () => setView(el.dataset.domain)));
       $('#export-global')?.addEventListener('click', exportGlobal);
