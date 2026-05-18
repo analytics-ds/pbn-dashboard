@@ -61,6 +61,9 @@ async function countArticles({ repo, articlesPath }, days) {
 }
 
 export async function fetchArticlesWindows({ repo, articlesPath }) {
+  if (!repo || !articlesPath) {
+    return { '7': 0, '28': 0, '90': 0, noRepo: true };
+  }
   const [a7, a28, a90] = await Promise.all([
     countArticles({ repo, articlesPath }, 7),
     countArticles({ repo, articlesPath }, 28),

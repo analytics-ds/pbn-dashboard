@@ -46,4 +46,16 @@ export const SITES = [
     repo: 'analytics-ds/quel-placement',
     articlesPath: 'content/blog',
   },
+  {
+    domain: 'universdelatech.fr',
+    gscProperty: 'sc-domain:universdelatech.fr',
+    repo: null,
+    articlesPath: null,
+  },
+  {
+    domain: 'secretdestyle.fr',
+    gscProperty: 'sc-domain:secretdestyle.fr',
+    repo: null,
+    articlesPath: null,
+  },
 ];
