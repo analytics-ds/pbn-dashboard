@@ -7,180 +7,19 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-function fmtNum(n) {
-  if (n == null || Number.isNaN(n)) return '0';
-  if (n >= 1000) return new Intl.NumberFormat('fr-FR').format(Math.round(n));
-  return String(Math.round(n));
-}
-
-function fmtPosition(p) {
-  if (p == null || !Number.isFinite(p) || p === 0) return '-';
-  return p.toFixed(1);
-}
-
-function deltaPct(curr, prev) {
-  if (!prev || prev === 0) {
-    return curr > 0 ? { label: 'new', sign: 'up' } : { label: null, sign: 'flat' };
-  }
-  const pct = ((curr - prev) / prev) * 100;
-  if (Math.abs(pct) < 0.5) return { label: '0%', sign: 'flat' };
-  const sign = pct > 0 ? 'up' : 'down';
-  const arrow = pct > 0 ? '+' : '';
-  return { label: `${arrow}${pct.toFixed(0)}%`, sign };
-}
-
-function deltaPosition(curr, prev) {
-  if (prev == null || !Number.isFinite(prev) || prev === 0) return { label: null, sign: 'flat' };
-  if (curr == null || !Number.isFinite(curr) || curr === 0) return { label: null, sign: 'flat' };
-  const diff = curr - prev;
-  if (Math.abs(diff) < 0.1) return { label: '0', sign: 'flat' };
-  const sign = diff < 0 ? 'up' : 'down';
-  return { label: `${diff > 0 ? '+' : ''}${diff.toFixed(1)}`, sign };
-}
-
-function badge(sign, label) {
-  if (!label) return '';
-  const cls = sign === 'up'
-    ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/10'
-    : sign === 'down'
-      ? 'bg-rose-50 text-rose-700 ring-rose-600/10'
-      : 'bg-slate-100 text-slate-600 ring-slate-500/10';
-  const icon = sign === 'up'
-    ? '<svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clip-rule="evenodd"/></svg>'
-    : sign === 'down'
-      ? '<svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clip-rule="evenodd"/></svg>'
-      : '';
-  return `<span class="inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset ${cls}">${icon}${escapeHtml(label)}</span>`;
-}
-
-function kpi(label, value, deltaInfo, iconSvg) {
-  return `
-    <div>
-      <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">
-        ${iconSvg || ''}<span>${label}</span>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-2xl font-semibold text-slate-900 tabular-nums tracking-tight">${value}</span>
-        ${deltaInfo ? badge(deltaInfo.sign, deltaInfo.label) : ''}
-      </div>
-    </div>`;
-}
-
-const ICON_CLICK = '<svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6.5 6.5l11 11M21 21l-5.6-5.6M15 21l-4-4M21 15l-4-4"/><path d="M9.5 17.5L12 15l-4-7-7 4 7 4-2.5 2.5z"/></svg>';
-const ICON_EYE = '<svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
-const ICON_POS = '<svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>';
-const ICON_DOC = '<svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
-
-function renderTopPages(pages, domain) {
-  if (!pages || !pages.length) {
-    return '<div class="text-sm text-slate-400 italic px-4 py-6 text-center">Aucune page avec donnees</div>';
-  }
-  const rows = pages.slice(0, 10).map((p, i) => {
-    const d = deltaPct(p.clicks, p.prevClicks);
-    const path = p.url.replace(`https://${domain}`, '').replace(`https://www.${domain}`, '') || '/';
-    return `
-      <div class="group flex items-center justify-between gap-3 px-4 py-2 hover:bg-slate-50 transition-colors">
-        <div class="flex items-center gap-3 min-w-0 flex-1">
-          <span class="text-xs text-slate-400 tabular-nums w-4">${i + 1}</span>
-          <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" class="truncate text-sm text-slate-700 group-hover:text-slate-900" title="${escapeHtml(p.url)}">${escapeHtml(path)}</a>
-        </div>
-        <div class="shrink-0 flex items-center gap-2.5">
-          <span class="text-sm font-medium text-slate-900 tabular-nums w-10 text-right">${fmtNum(p.clicks)}</span>
-          <span class="w-14 flex justify-end">${badge(d.sign, d.label)}</span>
-        </div>
-      </div>`;
-  }).join('');
-  return `<div class="divide-y divide-slate-100">${rows}</div>`;
-}
-
-function renderSiteCard(site, data) {
-  if (data.error) {
-    return `
-      <article class="rounded-2xl bg-white ring-1 ring-rose-200/60 shadow-sm overflow-hidden">
-        <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-          <a href="https://${escapeHtml(site.domain)}" target="_blank" rel="noopener" class="text-base font-semibold text-slate-900 hover:text-indigo-600 truncate">${escapeHtml(site.domain)}</a>
-          <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-600/10">Erreur</span>
-        </div>
-        <div class="px-6 py-5 text-sm text-slate-600">
-          <p class="mb-2">${escapeHtml(data.error)}</p>
-          <p class="text-xs text-slate-400">Propriete attendue&nbsp;: <code class="font-mono text-slate-500">${escapeHtml(site.gscProperty)}</code></p>
-        </div>
-      </article>`;
-  }
-
-  const dClicks = deltaPct(data.current.clicks, data.previous.clicks);
-  const dImpressions = deltaPct(data.current.impressions, data.previous.impressions);
-  const dPosition = deltaPosition(data.current.position, data.previous.position);
-
-  return `
-    <article class="rounded-2xl bg-white ring-1 ring-slate-200/70 shadow-sm overflow-hidden hover:shadow-md hover:ring-slate-300/70 transition-all">
-      <header class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-        <div class="flex items-center gap-2 min-w-0">
-          <img src="https://www.google.com/s2/favicons?domain=${escapeHtml(site.domain)}&sz=32" alt="" class="w-5 h-5 rounded shrink-0" loading="lazy">
-          <a href="https://${escapeHtml(site.domain)}" target="_blank" rel="noopener" class="text-base font-semibold text-slate-900 hover:text-indigo-600 truncate">${escapeHtml(site.domain)}</a>
-        </div>
-        <a href="https://github.com/${escapeHtml(site.repo)}" target="_blank" rel="noopener" class="text-xs text-slate-400 hover:text-slate-600 shrink-0 inline-flex items-center gap-1" title="Repo GitHub">
-          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-        </a>
-      </header>
-
-      <div class="px-6 py-5 grid grid-cols-2 gap-x-6 gap-y-5">
-        ${kpi('Clics', fmtNum(data.current.clicks), dClicks, ICON_CLICK)}
-        ${kpi('Impressions', fmtNum(data.current.impressions), dImpressions, ICON_EYE)}
-        ${kpi('Position moy.', fmtPosition(data.current.position), dPosition, ICON_POS)}
-        ${kpi('Articles 7j', fmtNum(data.articlesCount), null, ICON_DOC)}
-      </div>
-
-      <div class="border-t border-slate-100">
-        <div class="px-6 pt-4 pb-2 flex items-center justify-between">
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Top pages</h3>
-          <span class="text-xs text-slate-400">Clics &middot; vs S-1</span>
-        </div>
-        ${renderTopPages(data.topPages, site.domain)}
-      </div>
-    </article>`;
-}
-
-function renderSummary(sitesData) {
-  const ok = sitesData.filter(s => !s.data.error);
-  const totals = ok.reduce((acc, s) => {
-    acc.clicks += s.data.current?.clicks ?? 0;
-    acc.impressions += s.data.current?.impressions ?? 0;
-    acc.articles += s.data.articlesCount ?? 0;
-    return acc;
-  }, { clicks: 0, impressions: 0, articles: 0 });
-  const prevTotals = ok.reduce((acc, s) => {
-    acc.clicks += s.data.previous?.clicks ?? 0;
-    acc.impressions += s.data.previous?.impressions ?? 0;
-    return acc;
-  }, { clicks: 0, impressions: 0 });
-
-  const dClicks = deltaPct(totals.clicks, prevTotals.clicks);
-  const dImpressions = deltaPct(totals.impressions, prevTotals.impressions);
-
-  const card = (label, value, delta, iconSvg) => `
-    <div class="rounded-2xl bg-white ring-1 ring-slate-200/70 shadow-sm p-5">
-      <div class="flex items-center gap-1.5 text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">
-        ${iconSvg}<span>${label}</span>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-3xl font-bold text-slate-900 tabular-nums tracking-tight">${value}</span>
-        ${delta ? badge(delta.sign, delta.label) : ''}
-      </div>
-    </div>`;
-
-  return `
-    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-      ${card('Clics 7j', fmtNum(totals.clicks), dClicks, ICON_CLICK)}
-      ${card('Impressions 7j', fmtNum(totals.impressions), dImpressions, ICON_EYE)}
-      ${card('Articles publies', fmtNum(totals.articles), null, ICON_DOC)}
-      ${card('Sites actifs', `${ok.length}<span class="text-lg text-slate-400">/${sitesData.length}</span>`, null, '<svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>')}
-    </section>`;
-}
-
-export function renderDashboard({ sitesData, generatedAt, period }) {
-  const cards = sitesData.map(({ site, data }) => renderSiteCard(site, data)).join('\n');
-  const summary = renderSummary(sitesData);
+export function renderDashboard({ sitesData, generatedAt, periods }) {
+  // Sanitize for embedding
+  const payload = {
+    generatedAt,
+    periods,
+    sites: sitesData.map(({ site, data }) => ({
+      domain: site.domain,
+      repo: site.repo,
+      gscProperty: site.gscProperty,
+      data,
+    })),
+  };
+  const json = JSON.stringify(payload).replace(/</g, '\\u003c');
   const updatedAt = new Date(generatedAt).toLocaleString('fr-FR', { timeZone: 'Europe/Paris', dateStyle: 'medium', timeStyle: 'short' });
 
   return `<!doctype html>
@@ -193,59 +32,510 @@ export function renderDashboard({ sitesData, generatedAt, period }) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
-        }
-      }
-    };
-  </script>
   <style>
-    html, body { font-family: 'Inter', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+    :root {
+      --bg: #FAFAF7;
+      --bg-warm: #F2F0EB;
+      --bg-card: #FFFFFF;
+      --bg-olive: #C2B642;
+      --bg-olive-light: #E8E4A0;
+      --bg-black: #1A1A1A;
+      --bg-dark: #2C2C2C;
+      --border: #E5E3DE;
+      --border-strong: #D0CEC7;
+      --text: #1A1A1A;
+      --text-secondary: #6B6B60;
+      --text-muted: #9C9C90;
+      --accent: #C2B642;
+      --accent-dark: #9A8F30;
+      --green: #2D8C5A;
+      --green-bg: #E8F5EE;
+      --red: #C94040;
+      --red-bg: #FDE8E8;
+      --blue: #4A90D9;
+      --blue-bg: #E8F0FA;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow: 0 2px 12px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+      --radius-pill: 100px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.5; }
+    a { color: inherit; text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; border: 0; background: transparent; padding: 0; color: inherit; }
+    code { font-family: ui-monospace, monospace; font-size: 0.85em; }
+
+    .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar { background: var(--bg-card); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; }
+    .sidebar-brand { padding: 22px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .brand-logo { width: 36px; height: 36px; border-radius: 10px; background: var(--bg-black); display: flex; align-items: center; justify-content: center; color: var(--accent); }
+    .brand-text h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+    .brand-text p { margin: 0; font-size: 11px; color: var(--text-muted); }
+
+    .sidebar-section { padding: 12px 12px 4px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .sidebar-nav { flex: 1; overflow-y: auto; padding: 0 8px 16px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius-sm); color: var(--text-secondary); font-weight: 500; font-size: 13px; transition: background 0.15s; cursor: pointer; margin-bottom: 1px; }
+    .nav-item:hover { background: var(--bg-warm); color: var(--text); }
+    .nav-item.active { background: var(--bg-black); color: var(--bg-card); }
+    .nav-item.active .nav-favicon { filter: brightness(1.1); }
+    .nav-favicon { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
+    .nav-icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.7; }
+    .nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-badge { font-size: 11px; padding: 2px 7px; background: var(--red-bg); color: var(--red); border-radius: var(--radius-pill); font-weight: 600; }
+    .nav-item.active .nav-badge { background: rgba(255,255,255,0.15); color: var(--bg-card); }
+
+    .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); }
+    .sidebar-footer a { color: var(--text-secondary); }
+    .sidebar-footer a:hover { color: var(--accent-dark); }
+
+    /* Main */
+    .main { background: var(--bg); min-width: 0; }
+    .topbar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 5; }
+    .topbar h2 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .topbar-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .period-switch { display: flex; background: var(--bg-warm); border-radius: var(--radius-pill); padding: 3px; gap: 2px; }
+    .period-btn { padding: 7px 16px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; color: var(--text-secondary); transition: all 0.15s; }
+    .period-btn:hover { color: var(--text); }
+    .period-btn.active { background: var(--bg-card); color: var(--text); box-shadow: var(--shadow-sm); }
+
+    .content { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+    /* KPI cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .kpi-card { background: var(--bg-card); border-radius: var(--radius); padding: 20px; border: 1px solid var(--border); }
+    .kpi-card .label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .kpi-card .label svg { width: 14px; height: 14px; }
+    .kpi-card .value { display: flex; align-items: baseline; gap: 10px; }
+    .kpi-card .value .num { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
+    .kpi-card .value .sub { font-size: 16px; color: var(--text-muted); font-weight: 600; }
+
+    .badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-pill); font-variant-numeric: tabular-nums; }
+    .badge svg { width: 10px; height: 10px; }
+    .badge.up { background: var(--green-bg); color: var(--green); }
+    .badge.down { background: var(--red-bg); color: var(--red); }
+    .badge.flat { background: var(--bg-warm); color: var(--text-muted); }
+
+    /* Section title */
+    .section-title { font-size: 13px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 14px; display: flex; align-items: center; justify-content: space-between; }
+    .section-title .hint { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: none; letter-spacing: 0; }
+
+    /* Site grid (overview) */
+    .sites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+    .site-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); padding: 18px; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; gap: 14px; }
+    .site-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow); transform: translateY(-1px); }
+    .site-card .head { display: flex; align-items: center; gap: 10px; }
+    .site-card .head .favicon { width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0; }
+    .site-card .head .domain { font-weight: 600; font-size: 14px; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .site-card .head .arrow { color: var(--text-muted); flex-shrink: 0; transition: transform 0.15s, color 0.15s; }
+    .site-card:hover .arrow { transform: translateX(3px); color: var(--accent-dark); }
+
+    .site-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .site-kpi { display: flex; flex-direction: column; gap: 2px; }
+    .site-kpi .label { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .site-kpi .num { font-size: 18px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .site-kpi .delta { margin-top: 2px; }
+
+    .site-error { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--red); padding: 18px; cursor: not-allowed; }
+    .site-error .err-tag { font-size: 11px; font-weight: 600; background: var(--red-bg); color: var(--red); padding: 3px 10px; border-radius: var(--radius-pill); }
+    .site-error .err-msg { font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.45; }
+
+    /* Detail view */
+    .detail-head { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); padding: 22px 24px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; }
+    .detail-head .favicon { width: 40px; height: 40px; border-radius: 10px; }
+    .detail-head .info { flex: 1; }
+    .detail-head .info h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+    .detail-head .info .links { display: flex; gap: 14px; margin-top: 4px; font-size: 12px; }
+    .detail-head .info .links a { color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px; }
+    .detail-head .info .links a:hover { color: var(--accent-dark); }
+    .detail-head .info .links svg { width: 13px; height: 13px; }
+
+    .chart-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; margin-bottom: 20px; }
+    .chart-card h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+    .chart-card .chart-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+    .chart-wrap { height: 220px; position: relative; }
+
+    .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 1100px) { .chart-grid { grid-template-columns: 1fr; } }
+
+    .top-pages { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+    .top-pages .head { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+    .top-pages .head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+    .top-pages .head .hint { font-size: 11px; color: var(--text-muted); }
+    .page-row { display: grid; grid-template-columns: 28px 1fr 60px 70px; gap: 12px; padding: 11px 20px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.1s; }
+    .page-row:last-child { border-bottom: 0; }
+    .page-row:hover { background: var(--bg-warm); }
+    .page-row .rank { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+    .page-row .url { color: var(--text-secondary); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .page-row:hover .url { color: var(--text); }
+    .page-row .clicks { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; }
+    .page-row .delta-cell { text-align: right; }
+
+    .empty-state { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+    /* Mobile */
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; max-height: 50vh; }
+      .content { padding: 20px 16px; }
+      .topbar { padding: 14px 16px; flex-direction: column; align-items: flex-start; gap: 10px; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .sites-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen antialiased">
-  <header class="bg-white border-b border-slate-200/70 sticky top-0 z-10 backdrop-blur-sm bg-white/95">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
         </div>
+        <div class="brand-text">
+          <h1>PBN Dashboard</h1>
+          <p>Search Console &middot; ${updatedAt}</p>
+        </div>
+      </div>
+
+      <div class="sidebar-section">Vues</div>
+      <nav class="sidebar-nav" id="nav">
+        <!-- Populated by JS -->
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="https://github.com/analytics-ds/pbn-dashboard" target="_blank" rel="noopener">analytics-ds/pbn-dashboard</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
         <div>
-          <h1 class="text-base font-bold text-slate-900 leading-tight">PBN Dashboard</h1>
-          <p class="text-xs text-slate-500">Performance Search Console &middot; ${sitesData.length} sites</p>
+          <h2 id="page-title">Vue d'ensemble</h2>
+          <div class="topbar-meta" id="page-sub"></div>
+        </div>
+        <div class="period-switch" id="period-switch">
+          <button class="period-btn" data-period="7">7 jours</button>
+          <button class="period-btn active" data-period="28">28 jours</button>
+          <button class="period-btn" data-period="90">90 jours</button>
         </div>
       </div>
-      <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M12 8v4l3 2"/></svg>
-        <span>MAJ ${escapeHtml(updatedAt)}</span>
+
+      <div class="content" id="content">
+        <!-- Populated by JS -->
       </div>
-    </div>
-  </header>
+    </main>
+  </div>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="mb-8">
-      <h2 class="text-2xl font-bold text-slate-900 tracking-tight">Vue d'ensemble</h2>
-      <p class="text-sm text-slate-500 mt-1">Periode du <span class="font-medium text-slate-700">${period.startDate}</span> au <span class="font-medium text-slate-700">${period.endDate}</span> &middot; comparaison vs 7 jours precedents</p>
-    </div>
+  <script id="data" type="application/json">${json}</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script>
+    const PAYLOAD = JSON.parse(document.getElementById('data').textContent);
+    const SITES = PAYLOAD.sites;
 
-    ${summary}
+    let currentPeriod = '28';
+    let currentView = 'overview';
+    let charts = [];
 
-    <div class="mb-4">
-      <h2 class="text-lg font-semibold text-slate-900">Sites</h2>
-    </div>
+    const $ = (s, el = document) => el.querySelector(s);
 
-    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-      ${cards}
-    </section>
+    // ------- Helpers
+    const fmtNum = (n) => {
+      if (n == null || Number.isNaN(n)) return '0';
+      if (n >= 1000) return new Intl.NumberFormat('fr-FR').format(Math.round(n));
+      return String(Math.round(n));
+    };
+    const fmtPos = (p) => (p == null || !isFinite(p) || p === 0) ? '-' : p.toFixed(1);
+    const fmtDate = (iso) => {
+      const d = new Date(iso);
+      return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    };
 
-    <footer class="mt-12 pt-6 border-t border-slate-200 text-center text-xs text-slate-400">
-      Donnees Search Console + GitHub Commits &middot; <a class="hover:text-slate-600 underline-offset-2 hover:underline" href="https://github.com/analytics-ds/pbn-dashboard" target="_blank" rel="noopener">analytics-ds/pbn-dashboard</a>
-    </footer>
-  </main>
+    function deltaPct(curr, prev) {
+      if (!prev || prev === 0) return curr > 0 ? { label: 'new', sign: 'up' } : null;
+      const pct = ((curr - prev) / prev) * 100;
+      if (Math.abs(pct) < 0.5) return { label: '0%', sign: 'flat' };
+      return { label: (pct > 0 ? '+' : '') + pct.toFixed(0) + '%', sign: pct > 0 ? 'up' : 'down' };
+    }
+    function deltaPos(curr, prev) {
+      if (!prev || !isFinite(prev) || !curr || !isFinite(curr)) return null;
+      const diff = curr - prev;
+      if (Math.abs(diff) < 0.1) return { label: '0', sign: 'flat' };
+      return { label: (diff > 0 ? '+' : '') + diff.toFixed(1), sign: diff < 0 ? 'up' : 'down' };
+    }
+    function badge(d) {
+      if (!d || !d.label) return '';
+      const arrow = d.sign === 'up'
+        ? '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z"/></svg>'
+        : d.sign === 'down' ? '<svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z"/></svg>' : '';
+      return '<span class="badge ' + d.sign + '">' + arrow + (d.label) + '</span>';
+    }
+    function favicon(domain) { return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(domain) + '&sz=64'; }
+
+    function getSiteWindow(site, period) { return site.data.windows?.[period]; }
+    function getSiteArticles(site, period) { return site.data.articles?.[period] ?? 0; }
+
+    // ------- Sidebar
+    function renderNav() {
+      const errors = SITES.filter(s => s.data.windows?.[currentPeriod]?.error).length;
+      const items = [
+        '<div class="nav-item ' + (currentView === 'overview' ? 'active' : '') + '" data-view="overview">' +
+          '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>' +
+          '<span class="nav-label">Vue d\\'ensemble</span>' +
+          (errors > 0 ? '<span class="nav-badge">' + errors + '</span>' : '') +
+          '</div>'
+      ];
+      items.push('<div class="sidebar-section" style="padding-top:14px">Sites</div>');
+      SITES.forEach((s) => {
+        const w = getSiteWindow(s, currentPeriod);
+        const hasErr = w?.error;
+        items.push(
+          '<div class="nav-item ' + (currentView === s.domain ? 'active' : '') + '" data-view="' + s.domain + '">' +
+            '<img class="nav-favicon" src="' + favicon(s.domain) + '" alt="">' +
+            '<span class="nav-label">' + s.domain + '</span>' +
+            (hasErr ? '<span class="nav-badge">!</span>' : '') +
+          '</div>'
+        );
+      });
+      $('#nav').innerHTML = items.join('');
+      [...document.querySelectorAll('.nav-item')].forEach(el => {
+        el.addEventListener('click', () => { setView(el.dataset.view); });
+      });
+    }
+
+    // ------- Overview
+    function renderOverview() {
+      $('#page-title').textContent = "Vue d'ensemble";
+      const range = PAYLOAD.periods[currentPeriod];
+      $('#page-sub').textContent = 'Periode du ' + range.startDate + ' au ' + range.endDate + ' (' + currentPeriod + ' jours, vs periode precedente)';
+      const ok = SITES.filter(s => !getSiteWindow(s, currentPeriod)?.error);
+      const totals = ok.reduce((acc, s) => {
+        const w = getSiteWindow(s, currentPeriod);
+        acc.clicks += w?.current?.clicks ?? 0;
+        acc.impressions += w?.current?.impressions ?? 0;
+        acc.prevClicks += w?.previous?.clicks ?? 0;
+        acc.prevImpressions += w?.previous?.impressions ?? 0;
+        acc.articles += getSiteArticles(s, currentPeriod);
+        return acc;
+      }, { clicks: 0, impressions: 0, prevClicks: 0, prevImpressions: 0, articles: 0 });
+
+      const kpiCard = (label, value, sub, delta, iconSvg) =>
+        '<div class="kpi-card">' +
+          '<div class="label">' + iconSvg + '<span>' + label + '</span></div>' +
+          '<div class="value"><span class="num">' + value + '</span>' + (sub ? '<span class="sub">' + sub + '</span>' : '') + (delta ? badge(delta) : '') + '</div>' +
+        '</div>';
+
+      const iconClick = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>';
+      const iconEye = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+      const iconDoc = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>';
+      const iconCheck = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9 12l2 2 4-4"/></svg>';
+
+      const summary =
+        '<div class="kpi-grid">' +
+          kpiCard('Clics total', fmtNum(totals.clicks), '', deltaPct(totals.clicks, totals.prevClicks), iconClick) +
+          kpiCard('Impressions', fmtNum(totals.impressions), '', deltaPct(totals.impressions, totals.prevImpressions), iconEye) +
+          kpiCard('Articles publies', fmtNum(totals.articles), '', null, iconDoc) +
+          kpiCard('Sites actifs', String(ok.length), '/' + SITES.length, null, iconCheck) +
+        '</div>';
+
+      const grid = SITES.map(s => {
+        const w = getSiteWindow(s, currentPeriod);
+        if (w?.error) {
+          return '<div class="site-error" data-domain="' + s.domain + '">' +
+            '<div class="head" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+              '<img class="favicon" src="' + favicon(s.domain) + '" style="width:22px;height:22px;border-radius:5px">' +
+              '<div style="flex:1;font-weight:600">' + s.domain + '</div>' +
+              '<span class="err-tag">Erreur GSC</span>' +
+            '</div>' +
+            '<div class="err-msg">' + (w.error || '') + '</div>' +
+          '</div>';
+        }
+        const dClicks = deltaPct(w.current.clicks, w.previous.clicks);
+        const dImp = deltaPct(w.current.impressions, w.previous.impressions);
+        const dPos = deltaPos(w.current.position, w.previous.position);
+        return '<div class="site-card" data-domain="' + s.domain + '">' +
+          '<div class="head">' +
+            '<img class="favicon" src="' + favicon(s.domain) + '" alt="">' +
+            '<span class="domain">' + s.domain + '</span>' +
+            '<svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>' +
+          '</div>' +
+          '<div class="site-kpis">' +
+            '<div class="site-kpi"><div class="label">Clics</div><div class="num">' + fmtNum(w.current.clicks) + '</div><div class="delta">' + badge(dClicks) + '</div></div>' +
+            '<div class="site-kpi"><div class="label">Impr.</div><div class="num">' + fmtNum(w.current.impressions) + '</div><div class="delta">' + badge(dImp) + '</div></div>' +
+            '<div class="site-kpi"><div class="label">Pos.</div><div class="num">' + fmtPos(w.current.position) + '</div><div class="delta">' + badge(dPos) + '</div></div>' +
+            '<div class="site-kpi"><div class="label">Articles</div><div class="num">' + fmtNum(getSiteArticles(s, currentPeriod)) + '</div><div class="delta"></div></div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      $('#content').innerHTML = summary +
+        '<h3 class="section-title">Sites <span class="hint">Cliquer pour voir le detail</span></h3>' +
+        '<div class="sites-grid">' + grid + '</div>';
+      [...document.querySelectorAll('.site-card')].forEach(el => {
+        el.addEventListener('click', () => setView(el.dataset.domain));
+      });
+    }
+
+    // ------- Detail
+    function renderDetail(domain) {
+      const site = SITES.find(s => s.domain === domain);
+      if (!site) { renderOverview(); return; }
+      $('#page-title').textContent = site.domain;
+      const w = getSiteWindow(site, currentPeriod);
+      const range = PAYLOAD.periods[currentPeriod];
+      $('#page-sub').textContent = 'Periode du ' + range.startDate + ' au ' + range.endDate;
+
+      if (w?.error) {
+        $('#content').innerHTML =
+          '<div class="detail-head">' +
+            '<img class="favicon" src="' + favicon(site.domain) + '" alt="">' +
+            '<div class="info"><h1>' + site.domain + '</h1></div>' +
+          '</div>' +
+          '<div class="site-error" style="margin-top:16px">' +
+            '<span class="err-tag">Erreur GSC</span>' +
+            '<div class="err-msg" style="margin-top:10px">' + w.error + '</div>' +
+            '<div class="err-msg" style="margin-top:6px">Propriete: <code>' + site.gscProperty + '</code></div>' +
+          '</div>';
+        return;
+      }
+
+      // KPI cards
+      const dClicks = deltaPct(w.current.clicks, w.previous.clicks);
+      const dImp = deltaPct(w.current.impressions, w.previous.impressions);
+      const dPos = deltaPos(w.current.position, w.previous.position);
+      const dCtr = deltaPct(w.current.ctr * 100, w.previous.ctr * 100);
+
+      const kpiCard = (label, value, delta) =>
+        '<div class="kpi-card">' +
+          '<div class="label"><span>' + label + '</span></div>' +
+          '<div class="value"><span class="num">' + value + '</span>' + (delta ? badge(delta) : '') + '</div>' +
+        '</div>';
+
+      const head =
+        '<div class="detail-head">' +
+          '<img class="favicon" src="' + favicon(site.domain) + '" alt="">' +
+          '<div class="info">' +
+            '<h1>' + site.domain + '</h1>' +
+            '<div class="links">' +
+              '<a href="https://' + site.domain + '" target="_blank" rel="noopener">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+                ' Voir le site' +
+              '</a>' +
+              '<a href="https://github.com/' + site.repo + '" target="_blank" rel="noopener">' +
+                '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>' +
+                ' Repo' +
+              '</a>' +
+              '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> ' + getSiteArticles(site, currentPeriod) + ' articles publies</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      const kpis =
+        '<div class="kpi-grid">' +
+          kpiCard('Clics', fmtNum(w.current.clicks), dClicks) +
+          kpiCard('Impressions', fmtNum(w.current.impressions), dImp) +
+          kpiCard('CTR', (w.current.ctr * 100).toFixed(2) + '%', dCtr) +
+          kpiCard('Position moy.', fmtPos(w.current.position), dPos) +
+        '</div>';
+
+      const charts =
+        '<div class="chart-grid">' +
+          '<div class="chart-card"><h3>Clics par jour</h3><div class="chart-sub">' + currentPeriod + ' derniers jours</div><div class="chart-wrap"><canvas id="chart-clicks"></canvas></div></div>' +
+          '<div class="chart-card"><h3>Impressions par jour</h3><div class="chart-sub">' + currentPeriod + ' derniers jours</div><div class="chart-wrap"><canvas id="chart-impressions"></canvas></div></div>' +
+        '</div>' +
+        '<div class="chart-card" style="margin-top:20px"><h3>Position moyenne</h3><div class="chart-sub">Inversee: plus bas = mieux (' + currentPeriod + ' jours)</div><div class="chart-wrap"><canvas id="chart-position"></canvas></div></div>';
+
+      const topPages = (w.topPages || []).map((p, i) => {
+        const d = deltaPct(p.clicks, p.prevClicks);
+        const path = p.url.replace('https://' + site.domain, '').replace('https://www.' + site.domain, '') || '/';
+        return '<div class="page-row">' +
+          '<div class="rank">' + (i + 1) + '</div>' +
+          '<a class="url" href="' + p.url + '" target="_blank" rel="noopener" title="' + p.url + '">' + path + '</a>' +
+          '<div class="clicks">' + fmtNum(p.clicks) + '</div>' +
+          '<div class="delta-cell">' + badge(d) + '</div>' +
+        '</div>';
+      }).join('');
+
+      const topSection = '<div class="top-pages" style="margin-top:20px">' +
+        '<div class="head"><h3>Top pages</h3><span class="hint">Clics &middot; variation vs periode precedente</span></div>' +
+        (topPages || '<div class="empty-state">Aucune page avec des donnees</div>') +
+      '</div>';
+
+      $('#content').innerHTML = head + kpis + charts + topSection;
+      // Now render charts
+      requestAnimationFrame(() => renderCharts(site));
+    }
+
+    function destroyCharts() { charts.forEach(c => c.destroy()); charts = []; }
+
+    function renderCharts(site) {
+      destroyCharts();
+      const daily = site.data.windows?.daily;
+      if (!daily || daily.error || !Array.isArray(daily)) return;
+      const days = parseInt(currentPeriod, 10);
+      const series = daily.slice(-days);
+      const labels = series.map(d => fmtDate(d.date));
+
+      const baseOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, backgroundColor: '#1A1A1A', titleColor: '#FFF', bodyColor: '#FFF', padding: 10, displayColors: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#9C9C90', font: { size: 10 }, maxRotation: 0, autoSkipPadding: 20 } },
+          y: { grid: { color: '#F2F0EB' }, border: { display: false }, ticks: { color: '#9C9C90', font: { size: 10 } }, beginAtZero: true },
+        },
+      };
+
+      const mkLineData = (label, data, color, bg) => ({
+        labels,
+        datasets: [{
+          label, data, borderColor: color, backgroundColor: bg, borderWidth: 2, fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: color, pointHoverBorderColor: '#FFF', pointHoverBorderWidth: 2,
+        }],
+      });
+
+      const clicksData = mkLineData('Clics', series.map(d => d.clicks), '#C2B642', 'rgba(194,182,66,0.12)');
+      const impData = mkLineData('Impressions', series.map(d => d.impressions), '#4A90D9', 'rgba(74,144,217,0.10)');
+      const posData = mkLineData('Position', series.map(d => d.position), '#7B61FF', 'rgba(123,97,255,0.10)');
+
+      charts.push(new Chart(document.getElementById('chart-clicks'), { type: 'line', data: clicksData, options: baseOpts }));
+      charts.push(new Chart(document.getElementById('chart-impressions'), { type: 'line', data: impData, options: baseOpts }));
+      charts.push(new Chart(document.getElementById('chart-position'), {
+        type: 'line', data: posData,
+        options: { ...baseOpts, scales: { ...baseOpts.scales, y: { ...baseOpts.scales.y, reverse: true, beginAtZero: false, ticks: { ...baseOpts.scales.y.ticks, callback: v => v.toFixed(1) } } } },
+      }));
+    }
+
+    // ------- Router
+    function setView(view) {
+      currentView = view;
+      destroyCharts();
+      if (view === 'overview') renderOverview(); else renderDetail(view);
+      renderNav();
+      try { history.replaceState(null, '', '#' + (view === 'overview' ? '' : encodeURIComponent(view))); } catch {}
+    }
+
+    function setPeriod(p) {
+      currentPeriod = p;
+      [...document.querySelectorAll('.period-btn')].forEach(b => b.classList.toggle('active', b.dataset.period === p));
+      destroyCharts();
+      if (currentView === 'overview') renderOverview(); else renderDetail(currentView);
+      renderNav();
+    }
+
+    [...document.querySelectorAll('.period-btn')].forEach(b => b.addEventListener('click', () => setPeriod(b.dataset.period)));
+
+    // Init: route from hash
+    const hash = decodeURIComponent(location.hash.slice(1));
+    if (hash && SITES.find(s => s.domain === hash)) currentView = hash;
+    renderNav();
+    if (currentView === 'overview') renderOverview(); else renderDetail(currentView);
+  </script>
 </body>
 </html>
 `;

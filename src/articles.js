@@ -23,16 +23,16 @@ function isoDaysAgo(n) {
 }
 
 /**
- * Compte les fichiers .md ajoutes dans articlesPath sur les 7 derniers jours.
- * Dedupe par chemin de fichier (un commit qui modifie ne compte pas, seulement les 'added').
+ * Compte les fichiers .md ajoutes dans articlesPath sur une fenetre de N jours.
+ * Dedupe par chemin (uniquement les commits 'added', hors _index.md / .gitkeep).
  */
-export async function fetchArticlesThisWeek({ repo, articlesPath }) {
-  const since = isoDaysAgo(7);
+async function countArticles({ repo, articlesPath }, days) {
+  const since = isoDaysAgo(days);
   let commits;
   try {
     commits = await ghFetch(`/repos/${repo}/commits?since=${since}&path=${encodeURIComponent(articlesPath)}&per_page=100`);
   } catch (err) {
-    return { count: 0, files: [], error: err.message };
+    return { count: 0, error: err.message };
   }
 
   const added = new Set();
@@ -57,5 +57,14 @@ export async function fetchArticlesThisWeek({ repo, articlesPath }) {
     }
   }
 
-  return { count: added.size, files: [...added] };
+  return { count: added.size };
+}
+
+export async function fetchArticlesWindows({ repo, articlesPath }) {
+  const [a7, a28, a90] = await Promise.all([
+    countArticles({ repo, articlesPath }, 7),
+    countArticles({ repo, articlesPath }, 28),
+    countArticles({ repo, articlesPath }, 90),
+  ]);
+  return { '7': a7.count, '28': a28.count, '90': a90.count, error: a7.error || a28.error || a90.error };
 }

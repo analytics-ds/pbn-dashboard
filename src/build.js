@@ -1,14 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { SITES } from './sites.js';
-import { buildAuth, fetchSiteMetrics, getDateRanges } from './gsc.js';
-import { fetchArticlesThisWeek } from './articles.js';
+import { buildAuth, fetchSiteWindows, rangesForWindow } from './gsc.js';
+import { fetchArticlesWindows } from './articles.js';
 import { renderDashboard } from './render.js';
 
 const required = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REFRESH_TOKEN', 'GH_TOKEN'];
 const missing = required.filter(k => !process.env[k]);
 if (missing.length) {
   console.error(`Variables manquantes: ${missing.join(', ')}`);
-  console.error('Voir README.md pour le setup des credentials.');
   process.exit(1);
 }
 
@@ -18,39 +17,42 @@ const auth = buildAuth({
   refreshToken: process.env.GOOGLE_REFRESH_TOKEN,
 });
 
-console.log(`Pull data pour ${SITES.length} sites...`);
+console.log(`Pull data pour ${SITES.length} sites x 3 fenetres (7/28/90)...`);
 
 const sitesData = await Promise.all(SITES.map(async (site) => {
   const [gsc, articles] = await Promise.all([
-    fetchSiteMetrics(auth, site.gscProperty).catch(err => ({ error: err.message })),
-    fetchArticlesThisWeek({ repo: site.repo, articlesPath: site.articlesPath }).catch(err => ({ count: 0, error: err.message })),
+    fetchSiteWindows(auth, site.gscProperty).catch(err => ({ '7': { error: err.message } })),
+    fetchArticlesWindows({ repo: site.repo, articlesPath: site.articlesPath }).catch(() => ({ '7': 0, '28': 0, '90': 0 })),
   ]);
 
   const data = {
-    ...gsc,
-    articlesCount: articles.count ?? 0,
-    articlesError: articles.error,
+    windows: gsc,
+    articles,
   };
 
-  const status = gsc.error
-    ? `ERR ${gsc.error.slice(0, 80)}`
-    : `${gsc.current?.clicks ?? 0} clics | ${articles.count ?? 0} articles`;
+  const w7 = gsc['7'];
+  const status = w7?.error
+    ? `ERR ${w7.error.slice(0, 80)}`
+    : `${w7?.current?.clicks ?? 0} clics 7j | ${articles['7'] ?? 0} articles 7j`;
   console.log(`  ${site.domain.padEnd(28)} ${status}`);
 
   return { site, data };
 }));
 
-const { current } = getDateRanges();
+const periods = {
+  '7': rangesForWindow(7).current,
+  '28': rangesForWindow(28).current,
+  '90': rangesForWindow(90).current,
+};
+
 const html = renderDashboard({
   sitesData,
   generatedAt: new Date().toISOString(),
-  period: current,
+  periods,
 });
 
 await mkdir('dist', { recursive: true });
 await writeFile('dist/index.html', html);
-
-// Aussi un .nojekyll pour GH Pages
 await writeFile('dist/.nojekyll', '');
 
 console.log(`\nGenere: dist/index.html (${(html.length / 1024).toFixed(1)} KB)`);
