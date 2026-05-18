@@ -94,6 +94,12 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     .btn.primary { background: var(--bg-black); color: var(--bg-card); border-color: var(--bg-black); }
     .btn.primary:hover { background: var(--bg-dark); }
 
+    .country-wrap { position: relative; display: inline-flex; align-items: center; }
+    .country-wrap .country-icon { position: absolute; left: 12px; width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; }
+    #country-select { appearance: none; -webkit-appearance: none; padding: 8px 30px 8px 32px; font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-pill); cursor: pointer; font-family: inherit; }
+    #country-select:hover { color: var(--text); border-color: var(--border-strong); }
+    .country-wrap::after { content: '▾'; position: absolute; right: 12px; pointer-events: none; color: var(--text-muted); font-size: 10px; }
+
     .content { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
 
     /* KPI cards */
@@ -260,7 +266,10 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
             <button class="active" data-device="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>Tous</button>
             <button data-device="desktop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Desktop</button>
             <button data-device="mobile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h0"/></svg>Mobile</button>
-            <button data-device="tablet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M12 18h0"/></svg>Tablet</button>
+          </div>
+          <div class="country-wrap">
+            <svg class="country-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>
+            <select id="country-select"><option value="all">Tous pays</option></select>
           </div>
           <div class="switch" id="period-switch">
             <button data-period="7">7j</button>
@@ -280,8 +289,13 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     const SITES = PAYLOAD.sites;
     let currentPeriod = '28';
     let currentDevice = 'all';
+    let currentCountry = 'all';
     let currentView = 'overview';
     let charts = [];
+
+    // ISO 3166-1 alpha-3 -> nom francais (codes les plus courants)
+    const COUNTRY_NAMES = { fra: 'France', usa: 'États-Unis', gbr: 'Royaume-Uni', deu: 'Allemagne', esp: 'Espagne', ita: 'Italie', bel: 'Belgique', che: 'Suisse', can: 'Canada', mar: 'Maroc', dza: 'Algérie', tun: 'Tunisie', sen: 'Sénégal', civ: 'Côte d\\'Ivoire', cmr: 'Cameroun', lux: 'Luxembourg', prt: 'Portugal', nld: 'Pays-Bas', aut: 'Autriche', irl: 'Irlande', pol: 'Pologne', rou: 'Roumanie', tur: 'Turquie', rus: 'Russie', chn: 'Chine', jpn: 'Japon', kor: 'Corée du Sud', ind: 'Inde', bra: 'Brésil', mex: 'Mexique', arg: 'Argentine', aus: 'Australie', mco: 'Monaco', mlt: 'Malte', dnk: 'Danemark', swe: 'Suède', nor: 'Norvège', fin: 'Finlande', isl: 'Islande', cze: 'Tchéquie', hun: 'Hongrie', svk: 'Slovaquie', svn: 'Slovénie', hrv: 'Croatie', grc: 'Grèce', bgr: 'Bulgarie', srb: 'Serbie', ukr: 'Ukraine', isr: 'Israël', are: 'Émirats arabes unis', sau: 'Arabie saoudite', mdg: 'Madagascar', mus: 'Maurice', reu: 'La Réunion', glp: 'Guadeloupe', mtq: 'Martinique', guf: 'Guyane', nca: 'Nouvelle-Calédonie', pyf: 'Polynésie française' };
+    function countryName(code) { return COUNTRY_NAMES[code] || code.toUpperCase(); }
 
     const $ = (s, el = document) => el.querySelector(s);
 
@@ -320,19 +334,54 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     function getSiteWindow(site, period) { return site.data.windows?.[period]; }
     function getSiteArticles(site, period) { return site.data.articles?.[period] ?? 0; }
 
-    // Apply device filter to totals (returns adjusted current/previous)
+    // Applique filtres device + pays aux totaux (returns adjusted current/previous)
     function deviceAdjust(window) {
-      if (!window || currentDevice === 'all' || !window.devices) return window;
-      const dev = window.devices[currentDevice];
-      if (!dev) return { ...window, current: { clicks: 0, impressions: 0, position: 0, ctr: 0 }, previous: { clicks: 0, impressions: 0, position: 0, ctr: 0 } };
-      // Approx: use device current for totals; previous device data not stored separately, so we scale by ratio
-      const totalClicks = window.current.clicks || 1;
-      const ratio = dev.clicks / totalClicks;
+      if (!window || window.error) return window;
+      let curr = window.current;
+      let prev = window.previous;
+      // Combine ratios: device * country (approximation multiplicative)
+      let ratio = 1;
+      if (currentDevice !== 'all' && window.devices) {
+        const dev = window.devices[currentDevice];
+        if (!dev) return { ...window, current: { clicks: 0, impressions: 0, position: 0, ctr: 0 }, previous: { clicks: 0, impressions: 0, position: 0, ctr: 0 } };
+        const r = dev.clicks / Math.max(1, curr.clicks);
+        ratio *= r;
+        curr = dev;
+      }
+      if (currentCountry !== 'all' && window.countries) {
+        const ct = window.countries[currentCountry];
+        if (!ct) return { ...window, current: { clicks: 0, impressions: 0, position: 0, ctr: 0 }, previous: { clicks: 0, impressions: 0, position: 0, ctr: 0 } };
+        const baseClicks = currentDevice === 'all' ? window.current.clicks : (window.devices?.[currentDevice]?.clicks ?? 0);
+        const r = ct.clicks / Math.max(1, baseClicks || ct.clicks);
+        if (currentDevice === 'all') {
+          curr = ct;
+        } else {
+          // Combine: ratio pays applique a la valeur device
+          curr = { clicks: Math.round(curr.clicks * r), impressions: Math.round(curr.impressions * r), position: ct.position, ctr: ct.ctr };
+          ratio *= r;
+        }
+        if (currentDevice === 'all') ratio = ct.clicks / Math.max(1, window.current.clicks);
+      }
       return {
         ...window,
-        current: dev,
-        previous: { clicks: window.previous.clicks * ratio, impressions: window.previous.impressions * ratio, position: window.previous.position, ctr: window.previous.ctr },
+        current: curr,
+        previous: { clicks: Math.round(window.previous.clicks * ratio), impressions: Math.round(window.previous.impressions * ratio), position: window.previous.position, ctr: window.previous.ctr },
       };
+    }
+
+    // Populate country dropdown from union des pays presents
+    function populateCountrySelect() {
+      const sel = document.getElementById('country-select');
+      const counts = new Map();
+      SITES.forEach(s => {
+        const w = getSiteWindow(s, currentPeriod);
+        if (!w || w.error || !w.countries) return;
+        Object.entries(w.countries).forEach(([code, d]) => counts.set(code, (counts.get(code) || 0) + d.clicks));
+      });
+      const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+      const current = sel.value;
+      sel.innerHTML = '<option value="all">Tous pays</option>' + sorted.map(([c, n]) => '<option value="' + c + '">' + countryName(c) + ' (' + n + ')</option>').join('');
+      if ([...sel.options].some(o => o.value === current)) sel.value = current;
     }
 
     // ----- CSV
@@ -815,6 +864,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     function setPeriod(p) {
       currentPeriod = p;
       [...document.querySelectorAll('#period-switch button')].forEach(b => b.classList.toggle('active', b.dataset.period === p));
+      populateCountrySelect();
       destroyCharts(); refreshCurrentView();
     }
     function setDevice(d) {
@@ -831,6 +881,9 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
     [...document.querySelectorAll('#period-switch button')].forEach(b => b.addEventListener('click', () => setPeriod(b.dataset.period)));
     [...document.querySelectorAll('#device-switch button')].forEach(b => b.addEventListener('click', () => setDevice(b.dataset.device)));
+    document.getElementById('country-select').addEventListener('change', (e) => { currentCountry = e.target.value; destroyCharts(); refreshCurrentView(); });
+
+    populateCountrySelect();
 
     const hash = decodeURIComponent(location.hash.slice(1));
     if (hash === 'compare') currentView = 'compare';

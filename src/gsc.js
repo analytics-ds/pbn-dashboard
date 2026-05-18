@@ -59,7 +59,7 @@ function rowsToPages(rows) {
 
 async function fetchWindow(searchconsole, gscProperty, days) {
   const { current, previous } = rangesForWindow(days);
-  const [currTotalsRaw, prevTotalsRaw, currPagesRaw, prevPagesRaw, currQueriesRaw, prevQueriesRaw, currDeviceRaw] = await Promise.all([
+  const [currTotalsRaw, prevTotalsRaw, currPagesRaw, prevPagesRaw, currQueriesRaw, prevQueriesRaw, currDeviceRaw, currCountryRaw] = await Promise.all([
     querySite(searchconsole, gscProperty, { ...current, rowLimit: 1 }),
     querySite(searchconsole, gscProperty, { ...previous, rowLimit: 1 }),
     querySite(searchconsole, gscProperty, { ...current, dimensions: ['page'], rowLimit: 1000 }),
@@ -67,6 +67,7 @@ async function fetchWindow(searchconsole, gscProperty, days) {
     querySite(searchconsole, gscProperty, { ...current, dimensions: ['query'], rowLimit: 500 }),
     querySite(searchconsole, gscProperty, { ...previous, dimensions: ['query'], rowLimit: 500 }),
     querySite(searchconsole, gscProperty, { ...current, dimensions: ['device'], rowLimit: 5 }),
+    querySite(searchconsole, gscProperty, { ...current, dimensions: ['country'], rowLimit: 50 }),
   ]);
 
   if (currTotalsRaw.error) {
@@ -131,6 +132,21 @@ async function fetchWindow(searchconsole, gscProperty, days) {
     }
   }
 
+  // Country breakdown (codes ISO 3166-1 alpha-3 retournes par GSC: fra, usa, ...)
+  const countries = {};
+  if (!currCountryRaw.error) {
+    for (const r of currCountryRaw) {
+      const c = (r.keys?.[0] ?? '').toLowerCase();
+      if (!c) continue;
+      countries[c] = {
+        clicks: r.clicks ?? 0,
+        impressions: r.impressions ?? 0,
+        position: r.position ?? 0,
+        ctr: r.ctr ?? 0,
+      };
+    }
+  }
+
   return {
     period: current,
     previousPeriod: previous,
@@ -139,6 +155,7 @@ async function fetchWindow(searchconsole, gscProperty, days) {
     pages,
     queries,
     devices,
+    countries,
   };
 }
 
