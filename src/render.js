@@ -174,10 +174,11 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     .top-pages .head .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; }
     .top-pages .head .sort-btn { padding: 6px 10px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 500; color: var(--text-secondary); background: var(--bg); border: 1px solid var(--border); cursor: pointer; }
     .top-pages .head .sort-btn:hover { background: var(--bg-warm); }
-    .pages-list { max-height: 640px; overflow-y: auto; }
-    .pages-cols { display: grid; grid-template-columns: 40px 1fr 80px 90px 80px 80px; gap: 12px; padding: 9px 20px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1; }
+    .pages-list { }
+    .pages-cols, .page-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 60px 60px 70px 60px 60px 60px; gap: 10px; padding: 10px 20px; align-items: center; }
+    .pages-cols { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg); border-bottom: 1px solid var(--border); }
     .pages-cols .right { text-align: right; }
-    .page-row { display: grid; grid-template-columns: 40px 1fr 80px 90px 80px 80px; gap: 12px; padding: 11px 20px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.1s; }
+    .page-row { border-bottom: 1px solid var(--border); transition: background 0.1s; }
     .page-row:last-child { border-bottom: 0; }
     .page-row:hover { background: var(--bg-warm); }
     .page-row .rank { color: var(--text-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -186,6 +187,15 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     .page-row .num { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; color: var(--text); }
     .page-row .num-light { font-weight: 500; font-size: 13px; font-variant-numeric: tabular-nums; text-align: right; color: var(--text-secondary); }
     .page-row .delta-cell { text-align: right; }
+
+    .pagination { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); background: var(--bg); }
+    .pagination .info { font-size: 12px; color: var(--text-muted); }
+    .pagination .pager { display: flex; gap: 4px; align-items: center; }
+    .pager-btn { min-width: 32px; height: 32px; padding: 0 10px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .pager-btn:hover:not(:disabled) { background: var(--bg-warm); color: var(--text); border-color: var(--border-strong); }
+    .pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pager-btn.active { background: var(--bg-black); color: var(--bg-card); border-color: var(--bg-black); }
+    .pager-ellipsis { padding: 0 4px; color: var(--text-muted); font-size: 12px; }
 
     .empty-state { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
@@ -474,47 +484,102 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
           '<div>#</div>' +
           '<div>URL</div>' +
           '<div class="right">Clics</div>' +
+          '<div class="right">Δ</div>' +
           '<div class="right">Impr.</div>' +
+          '<div class="right">Δ</div>' +
           '<div class="right">Pos.</div>' +
-          '<div class="right">Delta</div>' +
+          '<div class="right">Δ</div>' +
         '</div>' +
-        '<div class="pages-list" id="pages-list">' +
-          (pages.length ? renderPagesList(pages, site.domain, '') : '<div class="empty-state">Aucune page avec des donnees</div>') +
-        '</div>' +
+        '<div class="pages-list" id="pages-list"></div>' +
+        '<div class="pagination" id="pages-pagination"></div>' +
       '</div>';
 
       $('#content').innerHTML = head + kpis + charts + topSection;
 
+      // Pagination state
+      const state = { pages, filtered: pages, page: 1, perPage: 10 };
+
+      const renderPage = () => {
+        const totalPages = Math.max(1, Math.ceil(state.filtered.length / state.perPage));
+        if (state.page > totalPages) state.page = totalPages;
+        const start = (state.page - 1) * state.perPage;
+        const slice = state.filtered.slice(start, start + state.perPage);
+        const listEl = document.getElementById('pages-list');
+        const pagEl = document.getElementById('pages-pagination');
+        listEl.innerHTML = slice.length ? renderPagesList(slice, site.domain, start) : '<div class="empty-state">Aucun resultat</div>';
+        const end = Math.min(start + state.perPage, state.filtered.length);
+        const info = state.filtered.length ? (start + 1) + '-' + end + ' sur ' + state.filtered.length : '0 page';
+        pagEl.innerHTML =
+          '<div class="info">' + info + '</div>' +
+          '<div class="pager">' + buildPager(state.page, totalPages) + '</div>';
+        [...pagEl.querySelectorAll('[data-goto]')].forEach(b => b.addEventListener('click', () => {
+          state.page = parseInt(b.dataset.goto, 10); renderPage();
+        }));
+      };
+
+      renderPage();
+
       // Search filter
       const searchEl = document.getElementById('pages-search');
-      if (searchEl) {
-        let t;
-        searchEl.addEventListener('input', (e) => {
-          clearTimeout(t);
-          const q = e.target.value.toLowerCase();
-          t = setTimeout(() => {
-            const filtered = q ? pages.filter(p => p.url.toLowerCase().includes(q)) : pages;
-            document.getElementById('pages-list').innerHTML = filtered.length ? renderPagesList(filtered, site.domain, q) : '<div class="empty-state">Aucun resultat</div>';
-            document.getElementById('pages-count').textContent = q ? (filtered.length + ' / ' + pages.length) : (pages.length + ' au total');
-          }, 80);
-        });
-      }
+      let t;
+      searchEl.addEventListener('input', (e) => {
+        clearTimeout(t);
+        const q = e.target.value.toLowerCase();
+        t = setTimeout(() => {
+          state.filtered = q ? pages.filter(p => p.url.toLowerCase().includes(q)) : pages;
+          state.page = 1;
+          document.getElementById('pages-count').textContent = q ? (state.filtered.length + ' / ' + pages.length) : (pages.length + ' au total');
+          renderPage();
+        }, 80);
+      });
 
       // Now render charts
       requestAnimationFrame(() => renderCharts(site));
     }
 
-    function renderPagesList(pages, domain, query) {
+    function buildPager(current, total) {
+      if (total <= 1) return '<button class="pager-btn active">1</button>';
+      const btns = [];
+      btns.push('<button class="pager-btn" data-goto="' + (current - 1) + '" ' + (current === 1 ? 'disabled' : '') + '>‹</button>');
+      const pages = pageWindow(current, total);
+      pages.forEach(p => {
+        if (p === '...') btns.push('<span class="pager-ellipsis">…</span>');
+        else btns.push('<button class="pager-btn ' + (p === current ? 'active' : '') + '" data-goto="' + p + '">' + p + '</button>');
+      });
+      btns.push('<button class="pager-btn" data-goto="' + (current + 1) + '" ' + (current === total ? 'disabled' : '') + '>›</button>');
+      return btns.join('');
+    }
+
+    function pageWindow(current, total) {
+      // Always show 1, current-1, current, current+1, total with ellipsis
+      if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+      const set = new Set([1, total, current, current - 1, current + 1]);
+      if (current <= 3) [2, 3, 4].forEach(n => set.add(n));
+      if (current >= total - 2) [total - 1, total - 2, total - 3].forEach(n => set.add(n));
+      const arr = [...set].filter(n => n >= 1 && n <= total).sort((a, b) => a - b);
+      const result = [];
+      for (let i = 0; i < arr.length; i++) {
+        result.push(arr[i]);
+        if (i + 1 < arr.length && arr[i + 1] - arr[i] > 1) result.push('...');
+      }
+      return result;
+    }
+
+    function renderPagesList(pages, domain, startRank) {
       return pages.map((p, i) => {
-        const d = deltaPct(p.clicks, p.prevClicks);
+        const dClicks = deltaPct(p.clicks, p.prevClicks);
+        const dImp = deltaPct(p.impressions, p.prevImpressions);
+        const dPos = deltaPos(p.position, p.prevPosition);
         const path = p.url.replace('https://' + domain, '').replace('https://www.' + domain, '') || '/';
         return '<div class="page-row">' +
-          '<div class="rank">' + (i + 1) + '</div>' +
+          '<div class="rank">' + (startRank + i + 1) + '</div>' +
           '<a class="url" href="' + p.url + '" target="_blank" rel="noopener" title="' + p.url + '">' + path + '</a>' +
           '<div class="num">' + fmtNum(p.clicks) + '</div>' +
+          '<div class="delta-cell">' + badge(dClicks) + '</div>' +
           '<div class="num-light">' + fmtNum(p.impressions) + '</div>' +
+          '<div class="delta-cell">' + badge(dImp) + '</div>' +
           '<div class="num-light">' + fmtPos(p.position) + '</div>' +
-          '<div class="delta-cell">' + badge(d) + '</div>' +
+          '<div class="delta-cell">' + badge(dPos) + '</div>' +
         '</div>';
       }).join('');
     }

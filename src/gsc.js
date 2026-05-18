@@ -72,16 +72,23 @@ async function fetchWindow(searchconsole, gscProperty, days) {
 
   const currTotals = rowsToTotals(currTotalsRaw);
   const prevTotals = rowsToTotals(prevTotalsRaw);
-  const currPages = rowsToPages(currPagesRaw);
-  const prevByUrl = new Map(rowsToPages(prevPagesRaw).map(p => [p.url, p]));
+  // Filtre URLs avec hashtag ou parametres
+  const isCleanUrl = (u) => !u.includes('#') && !u.includes('?');
+  const currPages = rowsToPages(currPagesRaw).filter(p => isCleanUrl(p.url));
+  const prevByUrl = new Map(rowsToPages(prevPagesRaw).filter(p => isCleanUrl(p.url)).map(p => [p.url, p]));
 
-  const pages = currPages.map(p => ({
-    url: p.url,
-    clicks: p.clicks,
-    impressions: p.impressions,
-    position: p.position,
-    prevClicks: prevByUrl.get(p.url)?.clicks ?? 0,
-  }));
+  const pages = currPages.map(p => {
+    const prev = prevByUrl.get(p.url);
+    return {
+      url: p.url,
+      clicks: p.clicks,
+      impressions: p.impressions,
+      position: p.position,
+      prevClicks: prev?.clicks ?? 0,
+      prevImpressions: prev?.impressions ?? 0,
+      prevPosition: prev?.position ?? null,
+    };
+  });
 
   return {
     period: current,
