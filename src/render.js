@@ -615,7 +615,10 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
       const clicksData = mkLineData('Clics', series.map(d => d.clicks), '#C2B642', 'rgba(194,182,66,0.12)');
       const impData = mkLineData('Impressions', series.map(d => d.impressions), '#4A90D9', 'rgba(74,144,217,0.10)');
-      const posData = mkLineData('Position', series.map(d => d.position), '#7B61FF', 'rgba(123,97,255,0.10)');
+      // Position: remplace 0 par null pour eviter les artefacts avec reverse:true (jours sans data)
+      const posSeries = series.map(d => d.position > 0 ? d.position : null);
+      const posData = mkLineData('Position', posSeries, '#7B61FF', 'rgba(123,97,255,0.10)');
+      posData.datasets[0].spanGaps = true;
 
       charts.push(new Chart(document.getElementById('chart-clicks'), { type: 'line', data: clicksData, options: baseOpts }));
       charts.push(new Chart(document.getElementById('chart-impressions'), { type: 'line', data: impData, options: baseOpts }));
