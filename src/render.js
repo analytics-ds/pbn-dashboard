@@ -188,6 +188,11 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     .data-table .search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--text-muted); pointer-events: none; }
     .data-cols, .data-row { display: grid; gap: 10px; padding: 10px 20px; align-items: center; }
     .data-cols { font-size: 10px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg); border-bottom: 1px solid var(--border); }
+    .data-cols .sortable { cursor: pointer; user-select: none; }
+    .data-cols .sortable:hover { color: var(--text); }
+    .data-cols .sortable.sorted { color: var(--text); }
+    .data-cols .sortable .arrow { display: inline-block; margin-left: 3px; opacity: 0.5; font-size: 9px; }
+    .data-cols .sortable.sorted .arrow { opacity: 1; }
     .data-cols.pages, .data-row.pages { grid-template-columns: 40px minmax(0, 1fr) 60px 60px 70px 60px 60px 60px; }
     .data-cols.queries, .data-row.queries { grid-template-columns: 40px minmax(0, 1fr) 60px 60px 70px 60px 60px 60px; }
     .data-cols .right { text-align: right; }
@@ -727,7 +732,29 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     }
 
     // ----- Detail view
-    let detailState = { tab: 'pages', pages: { page: 1 }, queries: { page: 1 }, filter: '' };
+    let detailState = { tab: 'pages', pages: { page: 1 }, queries: { page: 1 }, filter: '', sort: { col: 'clicks', dir: 'desc' } };
+    function deltaPctRaw(curr, prev) { if (!prev) return curr > 0 ? Infinity : 0; return ((curr - prev) / prev) * 100; }
+    function applySort(arr, isPages) {
+      const { col, dir } = detailState.sort;
+      const mult = dir === 'asc' ? 1 : -1;
+      const key = (x) => {
+        switch (col) {
+          case 'url': return isPages ? x.url : x.query;
+          case 'clicks': return x.clicks || 0;
+          case 'dClicks': return deltaPctRaw(x.clicks, x.prevClicks);
+          case 'impressions': return x.impressions || 0;
+          case 'dImp': return deltaPctRaw(x.impressions, x.prevImpressions);
+          case 'position': return x.position || 999;
+          case 'dPos': return (x.position || 999) - (x.prevPosition || x.position || 999);
+          default: return 0;
+        }
+      };
+      return [...arr].sort((a, b) => {
+        const va = key(a), vb = key(b);
+        if (typeof va === 'string') return mult * va.localeCompare(vb);
+        return mult * (va - vb);
+      });
+    }
 
     function renderDetail(domain) {
       const site = SITES.find(s => s.domain === domain);
@@ -796,6 +823,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
       $('#export-site').addEventListener('click', () => exportSite(site, w));
       [...document.querySelectorAll('.tab-btn')].forEach(b => b.addEventListener('click', () => {
         detailState.tab = b.dataset.tab; detailState.filter = '';
+        detailState.sort = { col: 'clicks', dir: 'desc' };
         const searchEl = $('#data-search'); if (searchEl) searchEl.value = '';
         [...document.querySelectorAll('.tab-btn')].forEach(x => x.classList.toggle('active', x.dataset.tab === detailState.tab));
         renderDataTable(site, w);
@@ -810,9 +838,11 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
     function renderDataTable(site, w) {
       const tab = detailState.tab;
-      const all = tab === 'pages' ? getPagesForView(w) : getQueriesForView(w);
+      const isPages = tab === 'pages';
+      const all = isPages ? getPagesForView(w) : getQueriesForView(w);
       const filter = detailState.filter;
-      const filtered = filter ? all.filter(it => (tab === 'pages' ? it.url : it.query).toLowerCase().includes(filter)) : all;
+      const filteredRaw = filter ? all.filter(it => (isPages ? it.url : it.query).toLowerCase().includes(filter)) : all;
+      const filtered = applySort(filteredRaw, isPages);
       const state = detailState[tab];
       const perPage = 10;
       const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -820,14 +850,34 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
       const start = (state.page - 1) * perPage;
       const slice = filtered.slice(start, start + perPage);
 
-      const cols = tab === 'pages'
-        ? '<div class="data-cols pages"><div>#</div><div>URL</div><div class="right">Clics</div><div class="right">Δ</div><div class="right">Impr.</div><div class="right">Δ</div><div class="right">Pos.</div><div class="right">Δ</div></div>'
-        : '<div class="data-cols queries"><div>#</div><div>Mot-cle</div><div class="right">Clics</div><div class="right">Δ</div><div class="right">Impr.</div><div class="right">Δ</div><div class="right">Pos.</div><div class="right">Δ</div></div>';
+      const sortAttr = (key) => {
+        const isSorted = detailState.sort.col === key;
+        const arrow = isSorted ? (detailState.sort.dir === 'asc' ? '↑' : '↓') : '';
+        return 'sortable ' + (isSorted ? 'sorted' : '') + '" data-sort="' + key + '"><span>' + (key === 'url' ? (isPages ? 'URL' : 'Mot-cle') : (key === 'dClicks' || key === 'dImp' || key === 'dPos') ? 'Δ' : key === 'clicks' ? 'Clics' : key === 'impressions' ? 'Impr.' : 'Pos.') + '</span><span class="arrow">' + (arrow || '↕') + '</span>';
+      };
+      const cols =
+        '<div class="data-cols ' + (isPages ? 'pages' : 'queries') + '">' +
+          '<div>#</div>' +
+          '<div class="' + sortAttr('url') + '</div>' +
+          '<div class="right ' + sortAttr('clicks') + '</div>' +
+          '<div class="right ' + sortAttr('dClicks') + '</div>' +
+          '<div class="right ' + sortAttr('impressions') + '</div>' +
+          '<div class="right ' + sortAttr('dImp') + '</div>' +
+          '<div class="right ' + sortAttr('position') + '</div>' +
+          '<div class="right ' + sortAttr('dPos') + '</div>' +
+        '</div>';
       $('#data-cols').innerHTML = cols;
+      [...document.querySelectorAll('#data-cols [data-sort]')].forEach(el => el.addEventListener('click', () => {
+        const c = el.dataset.sort;
+        if (detailState.sort.col === c) detailState.sort.dir = detailState.sort.dir === 'asc' ? 'desc' : 'asc';
+        else { detailState.sort.col = c; detailState.sort.dir = (c === 'position' || c === 'url') ? 'asc' : 'desc'; }
+        state.page = 1;
+        renderDataTable(site, w);
+      }));
 
       $('#data-count').textContent = filter ? (filtered.length + ' / ' + all.length) : (all.length + ' au total');
       $('#data-list').innerHTML = slice.length
-        ? slice.map((it, i) => tab === 'pages' ? renderPageRow(it, start + i, site.domain) : renderQueryRow(it, start + i)).join('')
+        ? slice.map((it, i) => isPages ? renderPageRow(it, start + i, site.domain) : renderQueryRow(it, start + i)).join('')
         : '<div class="empty-state">Aucun resultat</div>';
 
       const end = Math.min(start + perPage, filtered.length);
