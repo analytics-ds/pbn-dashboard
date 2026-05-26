@@ -1,4 +1,4 @@
-// Mapping des 7 sites PBN: domaine -> propriete GSC + repo GitHub + dossier articles
+// Mapping des sites PBN: domaine -> propriete GSC + repo GitHub + dossier articles
 // La propriete GSC doit matcher EXACTEMENT ce qui est enregistre dans Search Console
 // (URL prefix avec https:// et trailing slash, ou domain property type sc-domain:domaine.tld).
 // Par defaut on part sur domain property. Si une propriete est URL prefix, remplacer.
@@ -35,6 +35,12 @@ export const SITES = [
     articlesPath: 'src/content/blog',
   },
   {
+    domain: 'meilleur-logiciel-sirh.com',
+    gscProperty: 'sc-domain:meilleur-logiciel-sirh.com',
+    repo: 'analytics-ds/meilleur-logiciel-sirh.com',
+    articlesPath: 'content/blog',
+  },
+  {
     domain: 'meilleur-transport.com',
     gscProperty: 'sc-domain:meilleur-transport.com',
     repo: 'analytics-ds/meilleur-transport',
@@ -45,6 +51,14 @@ export const SITES = [
     gscProperty: 'sc-domain:quel-placement.com',
     repo: 'analytics-ds/quel-placement',
     articlesPath: 'content/blog',
+  },
+  {
+    domain: 'recette-repas.com',
+    gscProperty: 'sc-domain:recette-repas.com',
+    repo: 'analytics-ds/recette-repas',
+    // Site Hugo : les articles sont sous content/recettes (pas content/blog
+    // comme la convention par défaut). Cf. structure du repo.
+    articlesPath: 'content/recettes',
   },
   {
     domain: 'universdelatech.fr',
