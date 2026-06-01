@@ -22,16 +22,31 @@ export function buildAuth({ clientId, clientSecret, refreshToken }) {
   return oauth2;
 }
 
+// Erreurs reseau transitoires (runner GitHub qui n'atteint pas googleapis.com)
+// vs vraies erreurs API (permissions, quota) qu'il ne sert a rien de retenter
+function isTransientError(err) {
+  if (err.response?.status >= 500) return true;
+  const msg = err.message ?? '';
+  return /failed, reason|ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(msg);
+}
+
 async function querySite(searchconsole, siteUrl, { startDate, endDate, dimensions = [], rowLimit = 1 }) {
-  try {
-    const res = await searchconsole.searchanalytics.query({
-      siteUrl,
-      requestBody: { startDate, endDate, dimensions, rowLimit, dataState: 'final' },
-    });
-    return res.data.rows ?? [];
-  } catch (err) {
-    const msg = err.response?.data?.error?.message ?? err.message;
-    return { error: msg };
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const res = await searchconsole.searchanalytics.query({
+        siteUrl,
+        requestBody: { startDate, endDate, dimensions, rowLimit, dataState: 'final' },
+      });
+      return res.data.rows ?? [];
+    } catch (err) {
+      if (isTransientError(err) && attempt < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, 3000 * attempt));
+        continue;
+      }
+      const msg = err.response?.data?.error?.message ?? err.message;
+      return { error: msg };
+    }
   }
 }
 
