@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { SITES } from './sites.js';
 import { buildAuth, fetchSiteWindows, rangesForWindow } from './gsc.js';
+import { fetchAvailableDomains } from './gsc-sites.js';
 import { fetchArticlesWindows } from './articles.js';
 import { renderDashboard } from './render.js';
 
@@ -51,10 +52,17 @@ const periods = {
   '90': rangesForWindow(90).current,
 };
 
+// Tous les domaines Search Console accessibles au compte, pour le panneau
+// "Sites suivis" (cocher un domaine = l'ajouter a tracked.json via une issue).
+const availableDomains = await fetchAvailableDomains(auth);
+console.log(`Domaines Search Console disponibles: ${availableDomains.length}`);
+
 const html = renderDashboard({
   sitesData,
   generatedAt: new Date().toISOString(),
   periods,
+  availableDomains,
+  repoSlug: process.env.DASHBOARD_REPO || 'analytics-ds/pbn-dashboard',
 });
 
 await mkdir('dist', { recursive: true });

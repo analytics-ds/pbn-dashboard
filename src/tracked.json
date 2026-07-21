@@ -1,0 +1,68 @@
+[
+  {
+    "domain": "avis-services.fr",
+    "gscProperty": "sc-domain:avis-services.fr",
+    "repo": "analytics-ds/avis-services-fr",
+    "articlesPath": "content/blog"
+  },
+  {
+    "domain": "comparatif-mode.com",
+    "gscProperty": "sc-domain:comparatif-mode.com",
+    "repo": "analytics-ds/comparatif-mode",
+    "articlesPath": "content/fr/blog"
+  },
+  {
+    "domain": "comparatif-pro.com",
+    "gscProperty": "sc-domain:comparatif-pro.com",
+    "repo": "analytics-ds/comparatif-pro",
+    "articlesPath": "content/blog"
+  },
+  {
+    "domain": "guide-maison-habitat.com",
+    "gscProperty": "sc-domain:guide-maison-habitat.com",
+    "repo": "analytics-ds/guide-maison-habitat",
+    "articlesPath": "content/blog"
+  },
+  {
+    "domain": "meilleur-classement.com",
+    "gscProperty": "https://meilleur-classement.com/",
+    "repo": "analytics-ds/meilleur-classement",
+    "articlesPath": "src/content/blog"
+  },
+  {
+    "domain": "meilleur-logiciel-sirh.com",
+    "gscProperty": "sc-domain:meilleur-logiciel-sirh.com",
+    "repo": "analytics-ds/meilleur-logiciel-sirh.com",
+    "articlesPath": "content/blog"
+  },
+  {
+    "domain": "meilleur-transport.com",
+    "gscProperty": "sc-domain:meilleur-transport.com",
+    "repo": "analytics-ds/meilleur-transport",
+    "articlesPath": "content/blog"
+  },
+  {
+    "domain": "quel-placement.com",
+    "gscProperty": "sc-domain:quel-placement.com",
+    "repo": "analytics-ds/quel-placement",
+    "articlesPath": "content/blog"
+  },
+  {
+    "domain": "recette-repas.com",
+    "gscProperty": "sc-domain:recette-repas.com",
+    "repo": "analytics-ds/recette-repas",
+    "articlesPath": "content/recettes"
+  },
+  {
+    "domain": "universdelatech.fr",
+    "gscProperty": "sc-domain:universdelatech.fr",
+    "repo": null,
+    "articlesPath": null
+  },
+  {
+    "domain": "secretdestyle.fr",
+    "gscProperty": "sc-domain:secretdestyle.fr",
+    "repo": null,
+    "articlesPath": null
+  }
+]

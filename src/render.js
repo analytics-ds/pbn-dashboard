@@ -7,10 +7,12 @@ function escapeHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
-export function renderDashboard({ sitesData, generatedAt, periods }) {
+export function renderDashboard({ sitesData, generatedAt, periods, availableDomains = [], repoSlug = 'analytics-ds/pbn-dashboard' }) {
   const payload = {
     generatedAt,
     periods,
+    repoSlug,
+    availableDomains,
     sites: sitesData.map(({ site, data }) => ({
       domain: site.domain,
       repo: site.repo,
@@ -296,6 +298,8 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
   <script>
     const PAYLOAD = JSON.parse(document.getElementById('data').textContent);
     const SITES = PAYLOAD.sites;
+    const AVAILABLE = PAYLOAD.availableDomains || [];
+    const REPO_SLUG = PAYLOAD.repoSlug || 'analytics-ds/pbn-dashboard';
     let currentPeriod = '28';
     let currentDevice = 'all';
     let currentCountry = 'all';
@@ -502,6 +506,8 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
           '</div>'
         );
       });
+      items.push('<div class="sidebar-section" style="padding-top:14px">Gestion</div>');
+      items.push(navItem('settings', '<svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>', 'Sites suivis'));
       $('#nav').innerHTML = items.join('');
       [...document.querySelectorAll('.nav-item')].forEach(el => el.addEventListener('click', () => setView(el.dataset.view)));
     }
@@ -987,11 +993,83 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
       downloadCSV('pabanhake-overview-' + currentPeriod + 'j.csv', rows);
     }
 
+    // ----- Sites suivis (gestion de la liste)
+    function escAttr(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function renderSettings() {
+      $('#page-title').textContent = 'Sites suivis';
+      $('#page-sub').textContent = '';
+      const trackedProps = new Set(SITES.map(s => s.gscProperty));
+      // Proprietes suivies mais absentes de la liste GSC (property differente, ou sites.list en erreur) : on les garde.
+      const availProps = new Set(AVAILABLE.map(a => a.gscProperty));
+      const orphanTracked = SITES.filter(s => !availProps.has(s.gscProperty))
+        .map(s => ({ gscProperty: s.gscProperty, domain: s.domain, permission: 'suivi', orphan: true }));
+      const rows = [...orphanTracked, ...AVAILABLE];
+
+      const intro = AVAILABLE.length === 0
+        ? '<p style="color:var(--red)">La liste Search Console n\\'a pas pu etre recuperee au dernier build. Reessaie apres le prochain build, ou verifie les acces du compte.</p>'
+        : '<p style="color:var(--text-secondary);margin:0 0 4px">Coche les domaines a suivre. Le suivi lance la meme analyse Search Console que pour les autres sites. Rien n\\'est suivi par defaut.</p>';
+
+      const rowsHtml = rows.map(a => {
+        const checked = trackedProps.has(a.gscProperty) ? 'checked' : '';
+        const perm = a.orphan ? 'suivi (hors liste GSC)' : a.permission;
+        return '<label class="track-row" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer">' +
+          '<input type="checkbox" class="track-cb" data-prop="' + escAttr(a.gscProperty) + '" ' + checked + ' style="width:18px;height:18px;flex-shrink:0">' +
+          '<img class="nav-favicon" src="' + favicon(a.domain) + '" alt="" style="width:20px;height:20px">' +
+          '<span style="flex:1;font-weight:600">' + escAttr(a.domain) + '</span>' +
+          '<code style="color:var(--text-muted);font-size:11px">' + escAttr(a.gscProperty) + '</code>' +
+          '<span style="color:var(--text-muted);font-size:11px;width:130px;text-align:right">' + escAttr(perm) + '</span>' +
+        '</label>';
+      }).join('');
+
+      $('#content').innerHTML =
+        '<div style="max-width:900px">' +
+          '<div class="card" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden">' +
+            '<div style="padding:16px 18px;border-bottom:1px solid var(--border)">' +
+              intro +
+              '<div style="display:flex;gap:12px;align-items:center;margin-top:12px;flex-wrap:wrap">' +
+                '<input id="track-search" placeholder="Filtrer un domaine..." style="flex:1;min-width:200px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);font:inherit">' +
+                '<span id="track-count" style="color:var(--text-secondary);font-size:13px"></span>' +
+                '<button class="btn" id="track-save" style="background:var(--bg-black);color:#fff;padding:9px 16px;border-radius:var(--radius-sm);font-weight:600">Enregistrer</button>' +
+              '</div>' +
+              '<p id="track-hint" style="color:var(--text-muted);font-size:12px;margin:10px 0 0"></p>' +
+            '</div>' +
+            '<div id="track-list">' + rowsHtml + '</div>' +
+          '</div>' +
+        '</div>';
+
+      const updateCount = () => {
+        const n = [...document.querySelectorAll('.track-cb:checked')].length;
+        $('#track-count').textContent = n + ' suivi' + (n > 1 ? 's' : '') + ' / ' + rows.length + ' disponibles';
+      };
+      updateCount();
+      [...document.querySelectorAll('.track-cb')].forEach(cb => cb.addEventListener('change', updateCount));
+
+      $('#track-search').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        [...document.querySelectorAll('.track-row')].forEach(row => {
+          row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+        });
+      });
+
+      $('#track-save').addEventListener('click', () => {
+        const selected = [...document.querySelectorAll('.track-cb:checked')].map(cb => cb.dataset.prop);
+        const body = 'Domaines a suivre, genere par le dashboard PABANHAKE. Valide cette issue telle quelle : le robot met a jour la liste et regenere le dashboard (~2 min).\\n\\n' +
+          '\`\`\`json\\n' + JSON.stringify(selected, null, 2) + '\\n\`\`\`';
+        const url = 'https://github.com/' + REPO_SLUG + '/issues/new'
+          + '?title=' + encodeURIComponent('[pbn-track] Mise a jour des sites suivis')
+          + '&body=' + encodeURIComponent(body);
+        window.open(url, '_blank', 'noopener');
+        $('#track-hint').innerHTML = '&#8594; Un onglet GitHub s\\'est ouvert avec la liste. Clique sur <b>Create</b> pour valider ; le dashboard se met a jour tout seul apres le prochain build. (Selection : ' + selected.length + ' domaines)';
+      });
+    }
+
     // ----- Router
     function setView(view) {
       currentView = view; destroyCharts();
       if (view === 'overview') renderOverview();
       else if (view === 'compare') renderCompare();
+      else if (view === 'settings') renderSettings();
       else renderDetail(view);
       renderNav();
       try { history.replaceState(null, '', '#' + (view === 'overview' ? '' : encodeURIComponent(view))); } catch {}
@@ -1010,6 +1088,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
     function refreshCurrentView() {
       if (currentView === 'overview') renderOverview();
       else if (currentView === 'compare') renderCompare();
+      else if (currentView === 'settings') renderSettings();
       else renderDetail(currentView);
       renderNav();
     }
@@ -1027,6 +1106,7 @@ export function renderDashboard({ sitesData, generatedAt, periods }) {
 
     const hash = decodeURIComponent(location.hash.slice(1));
     if (hash === 'compare') currentView = 'compare';
+    else if (hash === 'settings') currentView = 'settings';
     else if (hash && SITES.find(s => s.domain === hash)) currentView = hash;
     renderNav();
     refreshCurrentView();

@@ -1,0 +1,60 @@
+name: Appliquer sites suivis
+
+# Declenche quand le dashboard ouvre une issue "[pbn-track] ...".
+# Applique la selection a src/tracked.json, commit, puis relance le build.
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+jobs:
+  apply:
+    if: startsWith(github.event.issue.title, '[pbn-track]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Appliquer la selection a tracked.json
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: node scripts/apply-tracked.mjs
+
+      - name: Commit si changement
+        id: commit
+        run: |
+          git config user.name "pbn-dashboard-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- src/tracked.json; then
+            echo "Aucun changement dans tracked.json."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git add src/tracked.json
+            git commit -m "chore(track): maj sites suivis (#${{ github.event.issue.number }})"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Relancer le build du dashboard
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run "Build & Deploy Dashboard" --repo "${{ github.repository }}"
+
+      - name: Commenter et fermer l'issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ steps.commit.outputs.changed }}" = "true" ]; then
+            gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --body "Liste des sites suivis mise a jour. Le dashboard se regenere, il sera a jour dans quelques minutes."
+          else
+            gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --body "Aucun changement detecte (la selection etait deja celle en place)."
+          fi
+          gh issue close "${{ github.event.issue.number }}" --repo "${{ github.repository }}"

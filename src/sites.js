@@ -1,75 +1,15 @@
-// Mapping des sites PBN: domaine -> propriete GSC + repo GitHub + dossier articles
-// La propriete GSC doit matcher EXACTEMENT ce qui est enregistre dans Search Console
-// (URL prefix avec https:// et trailing slash, ou domain property type sc-domain:domaine.tld).
-// Par defaut on part sur domain property. Si une propriete est URL prefix, remplacer.
+// Liste des sites PBN suivis. La SOURCE DE VERITE est le fichier tracked.json
+// (edite via le panneau "Sites suivis" du dashboard, qui ouvre une issue GitHub
+// appliquee automatiquement par le workflow apply-tracked.yml).
+//
+// Chaque entree : domaine -> propriete GSC + repo GitHub + dossier articles.
+// La propriete GSC doit matcher EXACTEMENT Search Console (URL prefix avec
+// https:// et trailing slash, ou domain property "sc-domain:domaine.tld").
+// Pour un domaine ajoute depuis le dashboard, repo/articlesPath valent null
+// (analyse Search Console seule, sans comptage d'articles) tant qu'on ne les
+// renseigne pas ici.
+import { readFileSync } from 'node:fs';
 
-export const SITES = [
-  {
-    domain: 'avis-services.fr',
-    gscProperty: 'sc-domain:avis-services.fr',
-    repo: 'analytics-ds/avis-services-fr',
-    articlesPath: 'content/blog',
-  },
-  {
-    domain: 'comparatif-mode.com',
-    gscProperty: 'sc-domain:comparatif-mode.com',
-    repo: 'analytics-ds/comparatif-mode',
-    articlesPath: 'content/fr/blog',
-  },
-  {
-    domain: 'comparatif-pro.com',
-    gscProperty: 'sc-domain:comparatif-pro.com',
-    repo: 'analytics-ds/comparatif-pro',
-    articlesPath: 'content/blog',
-  },
-  {
-    domain: 'guide-maison-habitat.com',
-    gscProperty: 'sc-domain:guide-maison-habitat.com',
-    repo: 'analytics-ds/guide-maison-habitat',
-    articlesPath: 'content/blog',
-  },
-  {
-    domain: 'meilleur-classement.com',
-    gscProperty: 'https://meilleur-classement.com/',
-    repo: 'analytics-ds/meilleur-classement',
-    articlesPath: 'src/content/blog',
-  },
-  {
-    domain: 'meilleur-logiciel-sirh.com',
-    gscProperty: 'sc-domain:meilleur-logiciel-sirh.com',
-    repo: 'analytics-ds/meilleur-logiciel-sirh.com',
-    articlesPath: 'content/blog',
-  },
-  {
-    domain: 'meilleur-transport.com',
-    gscProperty: 'sc-domain:meilleur-transport.com',
-    repo: 'analytics-ds/meilleur-transport',
-    articlesPath: 'content/blog',
-  },
-  {
-    domain: 'quel-placement.com',
-    gscProperty: 'sc-domain:quel-placement.com',
-    repo: 'analytics-ds/quel-placement',
-    articlesPath: 'content/blog',
-  },
-  {
-    domain: 'recette-repas.com',
-    gscProperty: 'sc-domain:recette-repas.com',
-    repo: 'analytics-ds/recette-repas',
-    // Site Hugo : les articles sont sous content/recettes (pas content/blog
-    // comme la convention par défaut). Cf. structure du repo.
-    articlesPath: 'content/recettes',
-  },
-  {
-    domain: 'universdelatech.fr',
-    gscProperty: 'sc-domain:universdelatech.fr',
-    repo: null,
-    articlesPath: null,
-  },
-  {
-    domain: 'secretdestyle.fr',
-    gscProperty: 'sc-domain:secretdestyle.fr',
-    repo: null,
-    articlesPath: null,
-  },
-];
+export const SITES = JSON.parse(
+  readFileSync(new URL('./tracked.json', import.meta.url), 'utf8')
+);
