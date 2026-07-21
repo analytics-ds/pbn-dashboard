@@ -995,6 +995,49 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
 
     // ----- Sites suivis (gestion de la liste)
     function escAttr(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    const GH_TOKEN_KEY = 'pbn_gh_token';
+    function ghToken() { try { return localStorage.getItem(GH_TOKEN_KEY) || ''; } catch { return ''; } }
+    function setGhToken(t) { try { if (t) localStorage.setItem(GH_TOKEN_KEY, t); else localStorage.removeItem(GH_TOKEN_KEY); } catch {} }
+    function domainOfClient(p) {
+      if (!p) return '';
+      if (p.indexOf('sc-domain:') === 0) return p.slice('sc-domain:'.length);
+      try { return new URL(p).host.replace(/^www\\./, ''); } catch { return p; }
+    }
+    function b64utf8(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+    // Ecrit src/tracked.json via l'API GitHub (Contents) avec le jeton du navigateur.
+    // Le commit (par un jeton utilisateur) declenche le rebuild GitHub Pages.
+    async function saveTracked(selected) {
+      const token = ghToken();
+      if (!token) throw new Error('NO_TOKEN');
+      const api = 'https://api.github.com/repos/' + REPO_SLUG + '/contents/src/tracked.json';
+      const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+      const getRes = await fetch(api + '?ref=main', { headers });
+      if (getRes.status === 401) throw new Error('BAD_TOKEN');
+      if (getRes.status === 403 || getRes.status === 404) throw new Error('NO_ACCESS');
+      if (!getRes.ok) throw new Error('GET ' + getRes.status);
+      const cur = await getRes.json();
+      let current = [];
+      try { current = JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\\n/g, ''))))); } catch {}
+      const byProp = new Map(current.map(s => [s.gscProperty, s]));
+      const seen = new Set(); const next = [];
+      for (const p of selected) {
+        if (seen.has(p)) continue; seen.add(p);
+        next.push(byProp.get(p) || { domain: domainOfClient(p), gscProperty: p, repo: null, articlesPath: null });
+      }
+      next.sort((a, b) => a.domain.localeCompare(b.domain));
+      const putRes = await fetch(api, {
+        method: 'PUT', headers,
+        body: JSON.stringify({
+          message: 'chore(track): maj sites suivis via dashboard (' + next.length + ')',
+          content: b64utf8(JSON.stringify(next, null, 2) + '\\n'),
+          sha: cur.sha, branch: 'main',
+        }),
+      });
+      if (!putRes.ok) { const t = await putRes.text(); throw new Error('PUT ' + putRes.status + ' ' + t.slice(0, 120)); }
+      return next.length;
+    }
 
     function renderSettings() {
       $('#page-title').textContent = 'Sites suivis';
@@ -1032,7 +1075,8 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
                 '<span id="track-count" style="color:var(--text-secondary);font-size:13px"></span>' +
                 '<button class="btn" id="track-save" style="background:var(--bg-black);color:#fff;padding:9px 16px;border-radius:var(--radius-sm);font-weight:600">Enregistrer</button>' +
               '</div>' +
-              '<p id="track-hint" style="color:var(--text-muted);font-size:12px;margin:10px 0 0"></p>' +
+              '<div id="track-connect" style="font-size:12px;margin-top:10px"></div>' +
+              '<p id="track-hint" style="color:var(--text-muted);font-size:12px;margin:8px 0 0"></p>' +
             '</div>' +
             '<div id="track-list">' + rowsHtml + '</div>' +
           '</div>' +
@@ -1052,16 +1096,47 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
         });
       });
 
-      $('#track-save').addEventListener('click', () => {
+      function renderConnect() {
+        const box = $('#track-connect');
+        if (!box) return;
+        if (ghToken()) {
+          box.innerHTML = '<span style="color:var(--green)">&#10003; GitHub connecte.</span> ' +
+            '<button id="track-disconnect" style="text-decoration:underline;color:var(--text-secondary)">Deconnecter</button>';
+          $('#track-disconnect').addEventListener('click', () => { setGhToken(''); renderConnect(); });
+        } else {
+          box.innerHTML = '<span style="color:var(--text-secondary)">Pour enregistrer en un clic, connecte GitHub une seule fois.</span> ' +
+            '<button id="track-connect-btn" style="text-decoration:underline;color:var(--accent-dark);font-weight:600">Connecter GitHub</button>';
+          $('#track-connect-btn').addEventListener('click', promptConnect);
+        }
+      }
+      function promptConnect() {
+        const t = prompt('Colle ton jeton GitHub (il reste sur ce navigateur, jamais partage) :');
+        if (t && t.trim()) { setGhToken(t.trim()); renderConnect(); $('#track-hint').textContent = 'GitHub connecte. Tu peux enregistrer.'; }
+      }
+
+      $('#track-save').addEventListener('click', async () => {
         const selected = [...document.querySelectorAll('.track-cb:checked')].map(cb => cb.dataset.prop);
-        const body = 'Domaines a suivre, genere par le dashboard PABANHAKE. Valide cette issue telle quelle : le robot met a jour la liste et regenere le dashboard (~2 min).\\n\\n' +
-          '\`\`\`json\\n' + JSON.stringify(selected, null, 2) + '\\n\`\`\`';
-        const url = 'https://github.com/' + REPO_SLUG + '/issues/new'
-          + '?title=' + encodeURIComponent('[pbn-track] Mise a jour des sites suivis')
-          + '&body=' + encodeURIComponent(body);
-        window.open(url, '_blank', 'noopener');
-        $('#track-hint').innerHTML = '&#8594; Un onglet GitHub s\\'est ouvert avec la liste. Clique sur <b>Create</b> pour valider ; le dashboard se met a jour tout seul apres le prochain build. (Selection : ' + selected.length + ' domaines)';
+        if (!ghToken()) { promptConnect(); if (!ghToken()) return; }
+        const btn = $('#track-save');
+        const prev = btn.textContent; btn.disabled = true; btn.textContent = 'Enregistrement...';
+        $('#track-hint').style.color = 'var(--text-muted)';
+        $('#track-hint').textContent = '';
+        try {
+          const n = await saveTracked(selected);
+          $('#track-hint').style.color = 'var(--green)';
+          $('#track-hint').innerHTML = '&#10003; Enregistre (' + n + ' sites suivis). Le dashboard se regenere, il sera a jour dans ~2 min.';
+        } catch (e) {
+          $('#track-hint').style.color = 'var(--red)';
+          const msg = String(e.message || e);
+          if (msg === 'NO_TOKEN' || msg === 'BAD_TOKEN') { setGhToken(''); renderConnect(); $('#track-hint').textContent = 'Jeton invalide ou expire. Reconnecte GitHub.'; }
+          else if (msg === 'NO_ACCESS') $('#track-hint').textContent = 'Le jeton n\\'a pas acces en ecriture au depot pbn-dashboard. Verifie les permissions du jeton.';
+          else $('#track-hint').textContent = 'Erreur : ' + msg;
+        } finally {
+          btn.disabled = false; btn.textContent = prev;
+        }
       });
+
+      renderConnect();
     }
 
     // ----- Router
