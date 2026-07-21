@@ -1,5 +1,11 @@
 [
   {
+    "domain": "amv.fr",
+    "gscProperty": "https://www.amv.fr/",
+    "repo": null,
+    "articlesPath": null
+  },
+  {
     "domain": "avis-services.fr",
     "gscProperty": "sc-domain:avis-services.fr",
     "repo": "analytics-ds/avis-services-fr",
@@ -54,14 +60,14 @@
     "articlesPath": "content/recettes"
   },
   {
-    "domain": "universdelatech.fr",
-    "gscProperty": "sc-domain:universdelatech.fr",
+    "domain": "secretdestyle.fr",
+    "gscProperty": "sc-domain:secretdestyle.fr",
     "repo": null,
     "articlesPath": null
   },
   {
-    "domain": "secretdestyle.fr",
-    "gscProperty": "sc-domain:secretdestyle.fr",
+    "domain": "universdelatech.fr",
+    "gscProperty": "sc-domain:universdelatech.fr",
     "repo": null,
     "articlesPath": null
   }
