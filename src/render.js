@@ -1013,30 +1013,37 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
       if (!token) throw new Error('NO_TOKEN');
       const api = 'https://api.github.com/repos/' + REPO_SLUG + '/contents/src/tracked.json';
       const headers = { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
-      const getRes = await fetch(api + '?ref=main', { headers });
-      if (getRes.status === 401) throw new Error('BAD_TOKEN');
-      if (getRes.status === 403 || getRes.status === 404) throw new Error('NO_ACCESS');
-      if (!getRes.ok) throw new Error('GET ' + getRes.status);
-      const cur = await getRes.json();
-      let current = [];
-      try { current = JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\\n/g, ''))))); } catch {}
-      const byProp = new Map(current.map(s => [s.gscProperty, s]));
-      const seen = new Set(); const next = [];
-      for (const p of selected) {
-        if (seen.has(p)) continue; seen.add(p);
-        next.push(byProp.get(p) || { domain: domainOfClient(p), gscProperty: p, repo: null, articlesPath: null });
+      // Retente sur conflit 409 (l'API GitHub peut renvoyer un sha perime juste
+      // apres une ecriture, le temps de propager) : on relit le sha frais et on rejoue.
+      let lastErr = '';
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const getRes = await fetch(api + '?ref=main&cb=' + Date.now(), { headers, cache: 'no-store' });
+        if (getRes.status === 401) throw new Error('BAD_TOKEN');
+        if (getRes.status === 403 || getRes.status === 404) throw new Error('NO_ACCESS');
+        if (!getRes.ok) throw new Error('GET ' + getRes.status);
+        const cur = await getRes.json();
+        let current = [];
+        try { current = JSON.parse(decodeURIComponent(escape(atob(cur.content.replace(/\\n/g, ''))))); } catch {}
+        const byProp = new Map(current.map(s => [s.gscProperty, s]));
+        const seen = new Set(); const next = [];
+        for (const p of selected) {
+          if (seen.has(p)) continue; seen.add(p);
+          next.push(byProp.get(p) || { domain: domainOfClient(p), gscProperty: p, repo: null, articlesPath: null });
+        }
+        next.sort((a, b) => a.domain.localeCompare(b.domain));
+        const putRes = await fetch(api, {
+          method: 'PUT', headers,
+          body: JSON.stringify({
+            message: 'chore(track): maj sites suivis via dashboard (' + next.length + ')',
+            content: b64utf8(JSON.stringify(next, null, 2) + '\\n'),
+            sha: cur.sha, branch: 'main',
+          }),
+        });
+        if (putRes.ok) return next.length;
+        if (putRes.status === 409) { lastErr = '409'; await new Promise(r => setTimeout(r, 1500)); continue; }
+        const t = await putRes.text(); throw new Error('PUT ' + putRes.status + ' ' + t.slice(0, 120));
       }
-      next.sort((a, b) => a.domain.localeCompare(b.domain));
-      const putRes = await fetch(api, {
-        method: 'PUT', headers,
-        body: JSON.stringify({
-          message: 'chore(track): maj sites suivis via dashboard (' + next.length + ')',
-          content: b64utf8(JSON.stringify(next, null, 2) + '\\n'),
-          sha: cur.sha, branch: 'main',
-        }),
-      });
-      if (!putRes.ok) { const t = await putRes.text(); throw new Error('PUT ' + putRes.status + ' ' + t.slice(0, 120)); }
-      return next.length;
+      throw new Error('Conflit de synchronisation (409) apres plusieurs essais. Reessaie dans quelques secondes.');
     }
 
     function renderSettings() {
