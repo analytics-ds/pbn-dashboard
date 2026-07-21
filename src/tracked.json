@@ -1,11 +1,5 @@
 [
   {
-    "domain": "amv.fr",
-    "gscProperty": "https://www.amv.fr/",
-    "repo": null,
-    "articlesPath": null
-  },
-  {
     "domain": "avis-services.fr",
     "gscProperty": "sc-domain:avis-services.fr",
     "repo": "analytics-ds/avis-services-fr",
