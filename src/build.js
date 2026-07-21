@@ -19,7 +19,13 @@ const auth = buildAuth({
 
 console.log(`Pull data pour ${SITES.length} sites x 3 fenetres (7/28/90)...`);
 
-const sitesData = await Promise.all(SITES.map(async (site) => {
+// IMPORTANT: sites traites en SEQUENTIEL, pas en Promise.all.
+// Chaque site tire deja ~25 requetes GSC en parallele (3 fenetres x 8 + daily).
+// Lancer les 11 sites d'un coup = ~275 requetes simultanees -> "Search Analytics
+// load quota exceeded" (quota de debit par minute), qui faisait sauter un site
+// au hasard a chaque run. En serie, on plafonne a ~25 requetes en vol.
+const sitesData = [];
+for (const site of SITES) {
   const [gsc, articles] = await Promise.all([
     fetchSiteWindows(auth, site.gscProperty).catch(err => ({ '7': { error: err.message } })),
     fetchArticlesWindows({ repo: site.repo, articlesPath: site.articlesPath }).catch(() => ({ '7': 0, '28': 0, '90': 0 })),
@@ -36,8 +42,8 @@ const sitesData = await Promise.all(SITES.map(async (site) => {
     : `${w7?.current?.clicks ?? 0} clics 7j | ${articles['7'] ?? 0} articles 7j`;
   console.log(`  ${site.domain.padEnd(28)} ${status}`);
 
-  return { site, data };
-}));
+  sitesData.push({ site, data });
+}
 
 const periods = {
   '7': rangesForWindow(7).current,
