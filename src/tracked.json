@@ -60,12 +60,6 @@
     "articlesPath": "content/blog"
   },
   {
-    "domain": "quel-vetement.com",
-    "gscProperty": "sc-domain:quel-vetement.com",
-    "repo": null,
-    "articlesPath": null
-  },
-  {
     "domain": "recette-repas.com",
     "gscProperty": "sc-domain:recette-repas.com",
     "repo": "analytics-ds/recette-repas",
