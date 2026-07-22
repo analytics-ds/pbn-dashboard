@@ -24,6 +24,12 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "ma-bonne-sante.com",
+    "gscProperty": "https://ma-bonne-sante.com/",
+    "repo": null,
+    "articlesPath": null
+  },
+  {
     "domain": "meilleur-classement.com",
     "gscProperty": "https://meilleur-classement.com/",
     "repo": "analytics-ds/meilleur-classement",
@@ -52,12 +58,6 @@
     "gscProperty": "sc-domain:quel-placement.com",
     "repo": "analytics-ds/quel-placement",
     "articlesPath": "content/blog"
-  },
-  {
-    "domain": "quel-vetement.com",
-    "gscProperty": "sc-domain:quel-vetement.com",
-    "repo": null,
-    "articlesPath": null
   },
   {
     "domain": "recette-repas.com",
