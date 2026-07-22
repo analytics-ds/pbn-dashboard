@@ -42,6 +42,12 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "meilleursextoy.com",
+    "gscProperty": "sc-domain:meilleursextoy.com",
+    "repo": null,
+    "articlesPath": null
+  },
+  {
     "domain": "quel-placement.com",
     "gscProperty": "sc-domain:quel-placement.com",
     "repo": "analytics-ds/quel-placement",
