@@ -24,6 +24,12 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "ma-bonne-sante.com",
+    "gscProperty": "https://ma-bonne-sante.com/",
+    "repo": null,
+    "articlesPath": null
+  },
+  {
     "domain": "meilleur-classement.com",
     "gscProperty": "https://meilleur-classement.com/",
     "repo": "analytics-ds/meilleur-classement",
