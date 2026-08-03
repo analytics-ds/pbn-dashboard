@@ -24,6 +24,12 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "journal-marketing.fr",
+    "gscProperty": "sc-domain:journal-marketing.fr",
+    "repo": "analytics-ds/journal-marketing",
+    "articlesPath": "content/fr/blog"
+  },
+  {
     "domain": "ma-bonne-sante.com",
     "gscProperty": "https://ma-bonne-sante.com/",
     "repo": null,
