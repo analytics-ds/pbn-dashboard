@@ -32,8 +32,8 @@
   {
     "domain": "ma-bonne-sante.com",
     "gscProperty": "https://ma-bonne-sante.com/",
-    "repo": null,
-    "articlesPath": null
+    "repo": "analytics-ds/ma-bonne-sante",
+    "articlesPath": "content/fr/blog"
   },
   {
     "domain": "meilleur-classement.com",
@@ -56,8 +56,8 @@
   {
     "domain": "meilleursextoy.com",
     "gscProperty": "sc-domain:meilleursextoy.com",
-    "repo": null,
-    "articlesPath": null
+    "repo": "analytics-ds/meilleursextoy",
+    "articlesPath": "content/blog"
   },
   {
     "domain": "quel-placement.com",
@@ -82,6 +82,12 @@
     "gscProperty": "sc-domain:secretdestyle.fr",
     "repo": null,
     "articlesPath": null
+  },
+  {
+    "domain": "top-activites.fr",
+    "gscProperty": "sc-domain:top-activites.fr",
+    "repo": "analytics-ds/top-activites",
+    "articlesPath": "content/blog"
   },
   {
     "domain": "universdelatech.fr",
