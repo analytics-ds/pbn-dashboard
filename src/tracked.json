@@ -100,5 +100,11 @@
     "gscProperty": "sc-domain:universdelatech.fr",
     "repo": null,
     "articlesPath": null
+  },
+  {
+    "domain": "le-mag-habitat.fr",
+    "gscProperty": "sc-domain:le-mag-habitat.fr",
+    "repo": "analytics-ds/le-mag-habitat",
+    "articlesPath": "content/blog"
   }
 ]
