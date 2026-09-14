@@ -1,6 +1,6 @@
 # PBN Dashboard
 
-Dashboard d'un coup d'oeil pour 7 sites PBN: Search Console (clics / impressions / position / top pages avec variation S vs S-1) + nombre d'articles publies sur les 7 derniers jours.
+Dashboard d'un coup d'oeil pour les sites du parc PBN (18 suivis, dont 15 avec un repo): Search Console (clics / impressions / position / top pages avec variation S vs S-1) + nombre d'articles en ligne et publies sur la periode.
 
 - Genere par GitHub Actions chaque jour (cron 7h UTC)
 - Site statique servi par GitHub Pages
@@ -77,4 +77,7 @@ Editer `src/sites.js`, commit, push. Le prochain build prendra en compte la modi
 
 - Le dashboard utilise la donnee GSC des 7 derniers jours **finalisee** (J-8 a J-2) car GSC a un retard de 2-3 jours sur la donnee fraiche.
 - Comparaison: vs les 7 jours precedents (J-15 a J-9).
-- Le compteur d'articles regarde les fichiers `.md` **ajoutes** dans le dossier `articlesPath` de chaque repo sur les 7 derniers jours (commits avec status `added`, hors `_index.md`).
+- Deux mesures d'articles, a ne pas confondre. **Articles en ligne** = le nombre d'articles **presents** sur le site, lu dans l'arbre git du repo (`.md` sous `articlesPath`, hors `_index.md` et hors traductions en suffixe de langue type `article.en.md`). **Publies** = le **flux** de fichiers ajoutes sur la fenetre choisie (commits avec status `added`).
+- `articlesPath` accepte une chaine ou un **tableau de chemins**, pour les blogs qui n'ont pas de dossier `blog` unique (`top-activites.fr` range ses articles par section).
+- **Un `articlesPath` faux n'affiche aucune erreur, il affiche 0 article.** Avant d'inscrire un blog, verifier le chemin reel :
+  `gh api "repos/analytics-ds/<repo>/git/trees/HEAD?recursive=1" --jq '.tree[].path' | grep '\.md$'`
