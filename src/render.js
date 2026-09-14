@@ -424,6 +424,8 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
 
     function getSiteWindow(site, period) { return site.data.windows?.[period]; }
     function getSiteArticles(site, period) { return site.data.articles?.[period] ?? 0; }
+    // Articles PRESENTS sur le site (photo), a distinguer du flux publie sur la periode.
+    function getSiteArticlesTotal(site) { const t = site.data.articles?.total; return (t === null || t === undefined) ? null : t; }
 
     // Applique filtres device + pays aux totaux (returns adjusted current/previous)
     function deviceAdjust(window) {
@@ -532,8 +534,9 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
         acc.prevClicks += w?.previous?.clicks ?? 0;
         acc.prevImpressions += w?.previous?.impressions ?? 0;
         acc.articles += getSiteArticles(s, currentPeriod);
+        acc.articlesTotal += getSiteArticlesTotal(s) ?? 0;
         return acc;
-      }, { clicks: 0, impressions: 0, prevClicks: 0, prevImpressions: 0, articles: 0 });
+      }, { clicks: 0, impressions: 0, prevClicks: 0, prevImpressions: 0, articles: 0, articlesTotal: 0 });
 
       const iconClick = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>';
       const iconEye = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
@@ -544,7 +547,7 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
         '<div class="kpi-grid">' +
           kpiCard('Clics total', fmtNum(totals.clicks), deltaPct(totals.clicks, totals.prevClicks), iconClick) +
           kpiCard('Impressions', fmtNum(totals.impressions), deltaPct(totals.impressions, totals.prevImpressions), iconEye) +
-          kpiCard('Articles publies', fmtNum(totals.articles), null, iconDoc) +
+          kpiCard('Articles en ligne', fmtNum(totals.articlesTotal) + '<span class="sub">+' + fmtNum(totals.articles) + ' sur la periode</span>', null, iconDoc) +
           kpiCard('Sites actifs', String(ok.length) + '<span class="sub">/' + SITES.length + '</span>', null, iconCheck) +
         '</div>';
 
@@ -668,6 +671,7 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
           position: w.current.position, prevPosition: w.previous.position,
           ctr: w.current.ctr * 100,
           articles: getSiteArticles(s, currentPeriod),
+          articlesTotal: getSiteArticlesTotal(s),
         };
       });
 
@@ -700,7 +704,8 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
             th('position', 'Position', 'right') +
             '<th class="right">Δ</th>' +
             th('ctr', 'CTR', 'right') +
-            th('articles', 'Articles', 'right') +
+            th('articlesTotal', 'Articles en ligne', 'right') +
+            th('articles', 'Publies', 'right') +
           '</tr></thead>' +
           '<tbody>' +
           ok.map(r => {
@@ -716,10 +721,11 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
               '<td class="right">' + fmtPos(r.position) + '</td>' +
               '<td class="right">' + badge(dP) + '</td>' +
               '<td class="right">' + r.ctr.toFixed(2) + '%</td>' +
+              '<td class="right">' + (r.articlesTotal === null ? '<span class="hint">n/a</span>' : fmtNum(r.articlesTotal)) + '</td>' +
               '<td class="right">' + fmtNum(r.articles) + '</td>' +
             '</tr>';
           }).join('') +
-          errored.map(r => '<tr><td><div class="site-cell"><img src="' + favicon(r.domain) + '" alt="">' + r.domain + '</div></td><td colspan="8" class="right" style="color:var(--red);font-weight:500">' + r.error + '</td></tr>').join('') +
+          errored.map(r => '<tr><td><div class="site-cell"><img src="' + favicon(r.domain) + '" alt="">' + r.domain + '</div></td><td colspan="9" class="right" style="color:var(--red);font-weight:500">' + r.error + '</td></tr>').join('') +
           '</tbody>' +
         '</table></div>';
 
@@ -731,8 +737,8 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
       }));
       [...document.querySelectorAll('.compare-table tbody tr[data-domain]')].forEach(tr => tr.addEventListener('click', () => setView(tr.dataset.domain)));
       $('#export-compare')?.addEventListener('click', () => {
-        const rows2 = [['Domaine','Clics','PrevClics','Impressions','PrevImpressions','Position','PrevPosition','CTR%','Articles']];
-        ok.forEach(r => rows2.push([r.domain, r.clicks, r.prevClicks, r.impressions, r.prevImpressions, r.position?.toFixed(2), r.prevPosition?.toFixed(2), r.ctr.toFixed(2), r.articles]));
+        const rows2 = [['Domaine','Clics','PrevClics','Impressions','PrevImpressions','Position','PrevPosition','CTR%','ArticlesEnLigne','ArticlesPublies']];
+        ok.forEach(r => rows2.push([r.domain, r.clicks, r.prevClicks, r.impressions, r.prevImpressions, r.position?.toFixed(2), r.prevPosition?.toFixed(2), r.ctr.toFixed(2), r.articlesTotal ?? '', r.articles]));
         downloadCSV('pabanhake-comparison-' + currentPeriod + 'j.csv', rows2);
       });
     }
@@ -791,7 +797,7 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
             '<div class="links">' +
               '<a href="https://' + site.domain + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Voir le site</a>' +
               (site.repo ? '<a href="https://github.com/' + site.repo + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg> Repo</a>' : '') +
-              (site.repo ? '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> ' + getSiteArticles(site, currentPeriod) + ' articles publies</span>' : '') +
+              (site.repo ? '<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg> ' + (getSiteArticlesTotal(site) === null ? '?' : getSiteArticlesTotal(site)) + ' articles en ligne, ' + getSiteArticles(site, currentPeriod) + ' publies sur la periode</span>' : '') +
             '</div>' +
           '</div>' +
           exportBtn +
@@ -984,11 +990,11 @@ export function renderDashboard({ sitesData, generatedAt, periods, availableDoma
       }
     }
     function exportGlobal() {
-      const rows = [['Domaine', 'Clics', 'PrevClics', 'Impressions', 'PrevImpressions', 'Position', 'PrevPosition', 'CTR%', 'Articles']];
+      const rows = [['Domaine', 'Clics', 'PrevClics', 'Impressions', 'PrevImpressions', 'Position', 'PrevPosition', 'CTR%', 'ArticlesEnLigne', 'ArticlesPublies']];
       SITES.forEach(s => {
         const w = deviceAdjust(getSiteWindow(s, currentPeriod));
         if (w?.error) { rows.push([s.domain, 'ERREUR', w.error]); return; }
-        rows.push([s.domain, w.current.clicks, w.previous.clicks, w.current.impressions, w.previous.impressions, w.current.position?.toFixed(2), w.previous.position?.toFixed(2), (w.current.ctr * 100).toFixed(2), getSiteArticles(s, currentPeriod)]);
+        rows.push([s.domain, w.current.clicks, w.previous.clicks, w.current.impressions, w.previous.impressions, w.current.position?.toFixed(2), w.previous.position?.toFixed(2), (w.current.ctr * 100).toFixed(2), getSiteArticlesTotal(s) ?? '', getSiteArticles(s, currentPeriod)]);
       });
       downloadCSV('pabanhake-overview-' + currentPeriod + 'j.csv', rows);
     }

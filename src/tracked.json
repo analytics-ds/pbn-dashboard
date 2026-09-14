@@ -3,7 +3,7 @@
     "domain": "avis-services.fr",
     "gscProperty": "sc-domain:avis-services.fr",
     "repo": "analytics-ds/avis-services-fr",
-    "articlesPath": "content/blog"
+    "articlesPath": "content/fr/blog"
   },
   {
     "domain": "comparatif-mode.com",
@@ -45,7 +45,7 @@
     "domain": "meilleur-logiciel-sirh.com",
     "gscProperty": "sc-domain:meilleur-logiciel-sirh.com",
     "repo": "analytics-ds/meilleur-logiciel-sirh.com",
-    "articlesPath": "content/blog"
+    "articlesPath": "content/fr/blog"
   },
   {
     "domain": "meilleur-transport.com",
@@ -93,7 +93,16 @@
     "domain": "top-activites.fr",
     "gscProperty": "sc-domain:top-activites.fr",
     "repo": "analytics-ds/top-activites",
-    "articlesPath": "content/blog"
+    "articlesPath": [
+      "content/activites-insolites",
+      "content/actualites",
+      "content/afterwork",
+      "content/bars-lieux-ludiques",
+      "content/evg",
+      "content/evjf",
+      "content/lexique",
+      "content/team-building-seminaires"
+    ]
   },
   {
     "domain": "universdelatech.fr",

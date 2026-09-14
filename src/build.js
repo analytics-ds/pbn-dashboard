@@ -29,7 +29,7 @@ const sitesData = [];
 for (const site of SITES) {
   const [gsc, articles] = await Promise.all([
     fetchSiteWindows(auth, site.gscProperty).catch(err => ({ '7': { error: err.message } })),
-    fetchArticlesWindows({ repo: site.repo, articlesPath: site.articlesPath }).catch(() => ({ '7': 0, '28': 0, '90': 0 })),
+    fetchArticlesWindows({ repo: site.repo, articlesPath: site.articlesPath }).catch(() => ({ '7': 0, '28': 0, '90': 0, total: null })),
   ]);
 
   const data = {
@@ -40,7 +40,7 @@ for (const site of SITES) {
   const w7 = gsc['7'];
   const status = w7?.error
     ? `ERR ${w7.error.slice(0, 80)}`
-    : `${w7?.current?.clicks ?? 0} clics 7j | ${articles['7'] ?? 0} articles 7j`;
+    : `${w7?.current?.clicks ?? 0} clics 7j | ${articles['7'] ?? 0} articles 7j | ${articles.total ?? '?'} en ligne`;
   console.log(`  ${site.domain.padEnd(28)} ${status}`);
 
   sitesData.push({ site, data });
