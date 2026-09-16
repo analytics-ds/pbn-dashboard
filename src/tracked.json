@@ -121,5 +121,11 @@
     "gscProperty": "sc-domain:universdelatech.fr",
     "repo": null,
     "articlesPath": null
+  },
+  {
+    "domain": "quel-investissement.com",
+    "gscProperty": "sc-domain:quel-investissement.com",
+    "repo": "analytics-ds/pbn-geo-quel-investissement",
+    "articlesPath": "content/fr/blog"
   }
 ]
