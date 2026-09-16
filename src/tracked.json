@@ -6,6 +6,12 @@
     "articlesPath": "content/fr/blog"
   },
   {
+    "domain": "carnetvegetal.com",
+    "gscProperty": "sc-domain:carnetvegetal.com",
+    "repo": "analytics-ds/pbn-geo-carnet-vegetal",
+    "articlesPath": "content/fr/blog"
+  },
+  {
     "domain": "comparatif-mode.com",
     "gscProperty": "sc-domain:comparatif-mode.com",
     "repo": "analytics-ds/comparatif-mode",
@@ -28,6 +34,12 @@
     "gscProperty": "sc-domain:journal-marketing.fr",
     "repo": "analytics-ds/journal-marketing",
     "articlesPath": "content/fr/blog"
+  },
+  {
+    "domain": "le-mag-habitat.fr",
+    "gscProperty": "sc-domain:le-mag-habitat.fr",
+    "repo": "analytics-ds/le-mag-habitat",
+    "articlesPath": "content/blog"
   },
   {
     "domain": "ma-bonne-sante.com",
@@ -109,11 +121,5 @@
     "gscProperty": "sc-domain:universdelatech.fr",
     "repo": null,
     "articlesPath": null
-  },
-  {
-    "domain": "le-mag-habitat.fr",
-    "gscProperty": "sc-domain:le-mag-habitat.fr",
-    "repo": "analytics-ds/le-mag-habitat",
-    "articlesPath": "content/blog"
   }
 ]
