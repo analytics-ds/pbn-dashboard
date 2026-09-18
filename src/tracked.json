@@ -48,6 +48,12 @@
     "articlesPath": "content/fr/blog"
   },
   {
+    "domain": "meilleur-choix-auto.com",
+    "gscProperty": "sc-domain:meilleur-choix-auto.com",
+    "repo": "analytics-ds/pbn-geo-meilleur-auto",
+    "articlesPath": "content/fr/blog"
+  },
+  {
     "domain": "meilleur-classement.com",
     "gscProperty": "https://meilleur-classement.com/",
     "repo": "analytics-ds/meilleur-classement",
@@ -76,6 +82,12 @@
     "gscProperty": "sc-domain:meilleursextoy.com",
     "repo": "analytics-ds/meilleursextoy",
     "articlesPath": "content/blog"
+  },
+  {
+    "domain": "quel-investissement.com",
+    "gscProperty": "sc-domain:quel-investissement.com",
+    "repo": "analytics-ds/pbn-geo-quel-investissement",
+    "articlesPath": "content/fr/blog"
   },
   {
     "domain": "quel-placement.com",
@@ -121,11 +133,5 @@
     "gscProperty": "sc-domain:universdelatech.fr",
     "repo": null,
     "articlesPath": null
-  },
-  {
-    "domain": "quel-investissement.com",
-    "gscProperty": "sc-domain:quel-investissement.com",
-    "repo": "analytics-ds/pbn-geo-quel-investissement",
-    "articlesPath": "content/fr/blog"
   }
 ]
