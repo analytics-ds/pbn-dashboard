@@ -42,6 +42,12 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "les-cles-du-dirigeant.fr",
+    "gscProperty": "sc-domain:les-cles-du-dirigeant.fr",
+    "repo": "analytics-ds/les-cles-du-dirigeant",
+    "articlesPath": "content/blog"
+  },
+  {
     "domain": "ma-bonne-sante.com",
     "gscProperty": "https://ma-bonne-sante.com/",
     "repo": "analytics-ds/ma-bonne-sante",
