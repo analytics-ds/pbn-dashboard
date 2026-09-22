@@ -24,6 +24,17 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "cuir-et-couture.fr",
+    "gscProperty": "sc-domain:cuir-et-couture.fr",
+    "repo": "analytics-ds/cuir-et-couture",
+    "articlesPath": [
+      "content/fr/cuir-stretch",
+      "content/fr/cuir",
+      "content/fr/couture",
+      "content/fr/mode"
+    ]
+  },
+  {
     "domain": "guide-maison-habitat.com",
     "gscProperty": "sc-domain:guide-maison-habitat.com",
     "repo": "analytics-ds/guide-maison-habitat",
