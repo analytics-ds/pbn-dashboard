@@ -143,6 +143,12 @@
     "articlesPath": null
   },
   {
+    "domain": "territoire-connecte.com",
+    "gscProperty": "sc-domain:territoire-connecte.com",
+    "repo": "analytics-ds/territoire-connecte",
+    "articlesPath": "content/fr/blog"
+  },
+  {
     "domain": "top-activites.fr",
     "gscProperty": "sc-domain:top-activites.fr",
     "repo": "analytics-ds/top-activites",
