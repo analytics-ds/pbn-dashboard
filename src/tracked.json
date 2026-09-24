@@ -35,6 +35,12 @@
     ]
   },
   {
+    "domain": "esm-guide.com",
+    "gscProperty": "sc-domain:esm-guide.com",
+    "repo": "analytics-ds/esm-guide",
+    "articlesPath": "content/fr/blog"
+  },
+  {
     "domain": "guide-maison-habitat.com",
     "gscProperty": "sc-domain:guide-maison-habitat.com",
     "repo": "analytics-ds/guide-maison-habitat",
