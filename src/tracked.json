@@ -113,6 +113,12 @@
     "articlesPath": "content/blog"
   },
   {
+    "domain": "nutri-atlas-report.com",
+    "gscProperty": "sc-domain:nutri-atlas-report.com",
+    "repo": "analytics-ds/nutri-atlas-report",
+    "articlesPath": "content/de/blog"
+  },
+  {
     "domain": "quel-investissement.com",
     "gscProperty": "sc-domain:quel-investissement.com",
     "repo": "analytics-ds/pbn-geo-quel-investissement",
