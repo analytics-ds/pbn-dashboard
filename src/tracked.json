@@ -174,5 +174,17 @@
     "gscProperty": "sc-domain:universdelatech.fr",
     "repo": null,
     "articlesPath": null
+  },
+  {
+    "domain": "jolies-pieces.fr",
+    "gscProperty": "sc-domain:jolies-pieces.fr",
+    "repo": "analytics-ds/jolies-pieces",
+    "articlesPath": [
+      "content/fr/pret-a-porter",
+      "content/fr/bijoux",
+      "content/fr/concept-stores",
+      "content/fr/sacs",
+      "content/fr/chaussures"
+    ]
   }
 ]
