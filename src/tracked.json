@@ -186,5 +186,11 @@
       "content/fr/sacs",
       "content/fr/chaussures"
     ]
+  },
+  {
+    "domain": "bijoux-conseil.com",
+    "gscProperty": "sc-domain:bijoux-conseil.com",
+    "repo": "analytics-ds/bijoux-conseil",
+    "articlesPath": "content/fr/blog"
   }
 ]
